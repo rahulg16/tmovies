@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 
 import NavBar from "../../Components/Layout/NavBar/NavBar";
@@ -8,7 +9,9 @@ import useDebouncedValue from "../../hooks/useDebouncedValue";
 import { useSearchMovies } from "../../hooks/useSearch";
 
 function Movies() {
-  const [searchTerm, setSearchTerm] = useState("batman");
+  const [searchParams] = useSearchParams();
+  const initialTerm = searchParams.get("q") || "batman";
+  const [searchTerm, setSearchTerm] = useState(initialTerm);
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 400);
 
   const { data, isLoading, isError, error, isFetching, refetch } =
@@ -16,6 +19,7 @@ function Movies() {
 
   return (
     <Box>
+      <title>Search Movies</title>
       <NavBar />
       <Header
         setSearchTerm={setSearchTerm}

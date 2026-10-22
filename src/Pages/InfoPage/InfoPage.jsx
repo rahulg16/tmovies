@@ -130,6 +130,7 @@ function InfoPage({ type }) {
 
   return (
     <Box sx={{ minHeight: "100vh", color: "white" }}>
+      <title>{film?.title || film?.name || "Details"}</title>
       <NavBar />
 
       <Box

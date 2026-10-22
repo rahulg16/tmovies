@@ -26,6 +26,7 @@ function Home() {
 
   return (
     <Box>
+      <title>T Movies</title>
       <NavBar />
       <Banner />
       <MoviesList

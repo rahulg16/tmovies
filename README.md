@@ -41,22 +41,21 @@ REACT_APP_TMDB_API_KEY=YOUR_TMDB_API_KEY_HERE
 ### 2. Run the app
 
 ```bash
-npm start
+npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:5173](http://localhost:5173). Use `npm run preview` to exercise the SSR build.
 
 ## Available Scripts
 
 | Script | Description |
 |---|---|
-| `npm start` | Runs the app in development mode. |
+| `npm run dev` | Runs the dev server (client-side rendering with HMR) on `http://localhost:5173`. |
+| `npm run build` | Builds the client (`dist/client`) and SSR bundle (`dist/server`). |
+| `npm run preview` | Runs the production server with SSR on `http://localhost:5173`. |
 | `npm test` | Launches the test runner in watch mode. |
 | `npm run test:ci` | Runs the test suite once, non-interactive. Used by CI. |
 | `npm run test:coverage` | Runs the suite with coverage and enforces the thresholds in `package.json`. |
-| `npm run build` | Builds the production bundle into `build/`. |
-| `npm run deploy` | Builds and publishes `build/` to GitHub Pages (`gh-pages`). |
-| `npm run eject` | One-way operation, removes the build config. |
 
 ## Continuous integration
 
