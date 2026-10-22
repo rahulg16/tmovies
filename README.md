@@ -9,6 +9,15 @@ A React app for browsing movies and TV series, powered by the [TMDB API](https:/
 - Detail pages with cast, trailers and similar titles, driven by route params (`/movie/:id`, `/tv/:id`).
 - Loading skeletons and error states for every data-driven section.
 
+## Documentation
+
+| Document | What it covers |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | Codebase map, architecture, and conventions — the fastest way to orient yourself in this repo. |
+| [`plans/UNIT_TEST_PLAN.md`](plans/UNIT_TEST_PLAN.md) | The behaviour-first unit test strategy: scope, harness, and every planned scenario. |
+| [`plans/CI_PLAN.md`](plans/CI_PLAN.md) | The GitHub Actions test + build workflow and the coverage gate. |
+| [`plans/REACT_QUERY_OPTIMIZATION_PLAN.md`](plans/REACT_QUERY_OPTIMIZATION_PLAN.md) | Proposed React Query cache and prefetch optimisations. |
+
 ## Getting started
 
 ```bash
