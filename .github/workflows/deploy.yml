@@ -1,0 +1,69 @@
+name: Deploy to GitHub Pages
+
+# Deploys the production bundle to GitHub Pages.
+#
+# The trigger is `workflow_run` on the `Tests` workflow, so a deployment only
+# happens when the CI run for that commit finished green. `workflow_dispatch`
+# allows a manual run.
+#
+# Note: `workflow_run` only fires once this file exists on the default branch,
+# so the very first publication is a manual `workflow_dispatch` run.
+
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    branches: ["master"]
+    types: [completed]
+  workflow_dispatch:
+
+# Never run two deployments at the same time - queue them instead.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build and deploy
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The exact commit CI tested, not the current head of the branch.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+        env:
+          REACT_APP_TMDB_API_KEY: ${{ secrets.REACT_APP_TMDB_API_KEY }}
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

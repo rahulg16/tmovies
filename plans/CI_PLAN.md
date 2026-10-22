@@ -3,8 +3,9 @@
 Continuous integration for the `tmovies` React app: a test job, a build job, and a coverage
 gate that fails the build when quality regresses.
 
-- **Scope:** GitHub Actions workflow + coverage thresholds. The GitHub Pages deploy workflow
-  is explicitly **out of scope** (see [§8](#8-out-of-scope)).
+- **Scope:** GitHub Actions workflow + coverage thresholds. The GitHub Pages deploy workflow was
+  out of scope here and has since been implemented as `.github/workflows/deploy.yml`
+  (see [§8](#8-out-of-scope)).
 - **Depends on:** [`UNIT_TEST_PLAN.md`](./UNIT_TEST_PLAN.md) being implemented, particularly
   Phase 0 (the test harness).
 
@@ -49,7 +50,7 @@ gate that fails the build when quality regresses.
 
 ## 3. Workflow file
 
-New file: `.github/workflows/test.yml`. No `.github/` directory exists in the repo today.
+File: `.github/workflows/test.yml` (implemented).
 
 ```yaml
 name: Tests
@@ -231,7 +232,7 @@ in CI. The numbers are a floor, not a goal — ratchet them upward as the suite 
 
 | Item | Note |
 |---|---|
-| GitHub Pages deploy workflow | The `README.md` describes a GitHub Actions → GitHub Pages deployment, but no workflow file exists. It would need the `REACT_APP_TMDB_API_KEY` secret and the `gh-pages` branch. A separate task. |
+| GitHub Pages deploy workflow | **Implemented** as `.github/workflows/deploy.yml`: it builds with the `REACT_APP_TMDB_API_KEY` secret and deploys the bundle with `actions/upload-pages-artifact` + `actions/deploy-pages`, triggered by a green `Tests` run on `master` or by `workflow_dispatch`. The `gh-pages` branch is no longer used for publishing. |
 | Branch protection rules | GitHub-side configuration; set "Require status checks" for `Test` and `Build` once the workflow is live. |
 | Third-party coverage service (Codecov, Coveralls) | The workflow already uploads `coverage/` as an artifact, which is enough to start. |
 | E2E tests | The current plan is unit- and screen-level only. |

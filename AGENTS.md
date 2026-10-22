@@ -97,7 +97,8 @@ src/
 | Change which trailer is shown | `selectPrimaryTrailer` / `selectTrailerList` in `api/videos.js` |
 | Change how long a video may load before the fallback appears | `VIDEO_LOAD_TIMEOUT` in `Components/UI/VideoEmbed/VideoEmbed.jsx` |
 | Add a test | the owning test file — see the testing map in §13 |
-| Change CI | `.github/workflows/test.yml` (planned — see `plans/CI_PLAN.md`) |
+| Change CI | `.github/workflows/test.yml` (see `plans/CI_PLAN.md`) |
+| Change how the site is deployed | `.github/workflows/deploy.yml` |
 
 ### Further reading
 
@@ -501,9 +502,21 @@ npm run deploy    # predeploy builds, gh-pages publishes to the gh-pages branch
 - `react-scripts build` sets `NODE_ENV=production`, which means a missing API key does **not**
   throw — it only logs an error, and the bundle ends up with `api_key=undefined`.
 - The key is injected at **build time**.
-- **No `.github/workflows/` directory exists.** The README describes a GitHub Actions →
-  GitHub Pages deployment, but the workflow is not written. `plans/CI_PLAN.md` covers a
-  separate test + build workflow.
+- **`.github/workflows/test.yml` exists** — a `Test` job (`test:ci` + `test:coverage`, uploads
+  `coverage/` as an artifact) and a `Build` job (`npm run build`, which also runs ESLint). It
+  runs on every push and pull request and needs **no secret**: the test harness supplies its
+  own key, and the build job falls back to a placeholder key.
+- **`.github/workflows/deploy.yml` exists** — it deploys the built bundle to GitHub Pages via
+  `actions/upload-pages-artifact` + `actions/deploy-pages`.
+  - Trigger: `workflow_run` on a green `Tests` run for `master`, plus `workflow_dispatch` for
+    a manual run. A push to any other branch, or a red CI run, deploys nothing.
+  - It checks out `${{ github.event.workflow_run.head_sha || github.sha }}`, so the deployed
+    commit is the one CI tested.
+  - It needs the repository **secret** `REACT_APP_TMDB_API_KEY`; the CI build job needs none.
+  - Repo setting required: Pages → Build and deployment → Source → **"GitHub Actions"**. The
+    `gh-pages` branch is no longer used for publishing.
+  - Gotcha: `workflow_run` only fires once `deploy.yml` is on the default branch, so the first
+    publication is a manual `workflow_dispatch` run.
 
 ## 13. Testing
 

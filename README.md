@@ -52,9 +52,29 @@ Open [http://localhost:3000](http://localhost:3000).
 |---|---|
 | `npm start` | Runs the app in development mode. |
 | `npm test` | Launches the test runner in watch mode. |
+| `npm run test:ci` | Runs the test suite once, non-interactive. Used by CI. |
+| `npm run test:coverage` | Runs the suite with coverage and enforces the thresholds in `package.json`. |
 | `npm run build` | Builds the production bundle into `build/`. |
 | `npm run deploy` | Builds and publishes `build/` to GitHub Pages (`gh-pages`). |
 | `npm run eject` | One-way operation, removes the build config. |
+
+## Continuous integration
+
+Every push and pull request runs [`.github/workflows/test.yml`](.github/workflows/test.yml):
+
+| Job | What it does |
+|---|---|
+| **Test** | `npm ci` → `npm run test:ci` → `npm run test:coverage`, then uploads `coverage/` as an artifact. |
+| **Build** | `npm ci` → `npm run build`, which also runs ESLint and fails on lint errors. |
+
+**CI needs no secret.** The test suite is hermetic: `src/test-utils/env.js` supplies its own
+TMDB key and MSW intercepts every request, so no real credential is exposed — not even to
+pull requests from forks. The build job only needs *a* key present, so it falls back to a
+placeholder; set a repository **variable** named `REACT_APP_TMDB_API_KEY` to override it.
+
+Coverage thresholds live in the `jest` block of `package.json` (statements 80, branches 70,
+functions 75, lines 80) and are enforced by Jest itself, so `npm run test:coverage` fails
+locally exactly as it fails in CI.
 
 ## Deployment
 
@@ -66,10 +86,32 @@ The key is injected **at build time**, so the deployed bundle already contains i
 | GitHub Actions → GitHub Pages | Repository secret `REACT_APP_TMDB_API_KEY` exposed to the build step | No |
 | Forks | Each fork can use its own secret | Only for separate quotas |
 
-Example workflow step:
+### GitHub Actions → GitHub Pages
+
+Two workflows live in `.github/workflows/`:
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `test.yml` | Every push and pull request | Runs the test suite, the coverage gate and a production build. Needs no credential. |
+| `deploy.yml` | A green `test.yml` run on `master` (or a manual `Run workflow`) | Builds with the real key, uploads the bundle as a Pages artifact and deploys it. |
+
+Only a push to `master` deploys, and only when the CI run for that commit finished green.
+A red suite leaves the currently published site untouched.
+
+One-time repository setup:
+
+1. **Settings → Secrets and variables → Actions → New repository secret** → name
+   `REACT_APP_TMDB_API_KEY`, value your TMDB key.
+2. **Settings → Pages → Build and deployment → Source → "GitHub Actions"**. The `gh-pages`
+   branch is no longer used for publishing.
+
+The first publication is a manual run: **Actions → Deploy to GitHub Pages → Run workflow**.
+`workflow_run` only fires once `deploy.yml` exists on the default branch.
+
+The build step reads the secret like this:
 
 ```yaml
-- name: Build
+- name: Build production bundle
   run: npm run build
   env:
     REACT_APP_TMDB_API_KEY: ${{ secrets.REACT_APP_TMDB_API_KEY }}
