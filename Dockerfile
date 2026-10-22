@@ -4,8 +4,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install dependencies
-COPY package*.json ./
-RUN npm ci
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps
 
 # Copy source and build
 COPY . .
@@ -22,7 +22,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server ./server
 
 # Install only production dependencies
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 
 EXPOSE 5173
 
