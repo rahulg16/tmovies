@@ -1,26 +1,33 @@
 import React from "react";
-import "./TrailerSection.css";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+
+import { selectTrailerList, youtubeEmbedUrl } from "../../api/videos";
+import VideoEmbed from "../../Components/UI/VideoEmbed/VideoEmbed";
 
 function TrailerSection({ trailers }) {
-  const trailerList = trailers || [];
+  const trailerList = selectTrailerList(trailers);
+
+  // No playable trailer means no section at all, rather than an empty one.
+  if (trailerList.length === 0) return null;
 
   return (
-    <div className="trailer-container">
-      {trailerList.map((trailer, i) => {
-        return (
-          <div className="yt-video" key={trailer.key ?? i}>
-            <h2>{trailer.name}</h2>
-            <iframe
-              className="responsive-iframe"
-              src={`https://www.youtube.com/embed/${trailer.key}`}
-              title="YouTube video player"
-              frameBorder="0"
-              allowFullScreen
-            ></iframe>
-          </div>
-        );
-      })}
-    </div>
+    <Box sx={{ width: "90vw", mx: "auto" }}>
+      {trailerList.map((trailer) => (
+        <Box
+          key={`${trailer.site}-${trailer.key}`}
+          sx={{ color: "white", my: "5%" }}
+        >
+          <Typography variant="h2" component="h2" sx={{ fontWeight: "bold" }}>
+            {trailer.name || "Trailer"}
+          </Typography>
+          <VideoEmbed
+            src={youtubeEmbedUrl(trailer.key)}
+            title={trailer.name || "Video player"}
+          />
+        </Box>
+      ))}
+    </Box>
   );
 }
 

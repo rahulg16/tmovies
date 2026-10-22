@@ -1,5 +1,6 @@
 import React from "react";
 import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
 import Home from "./Home";
@@ -13,6 +14,7 @@ import {
   server,
 } from "../../test-utils/mswServer";
 import { LIST_PATHS, TMDB_BASE_URL } from "../../test-utils/constants";
+import { movieFixture } from "../../test-utils/fixtures";
 
 const FIND = { timeout: 5000 };
 
@@ -102,6 +104,39 @@ describe("the home screen", () => {
     ]) {
       expect(await screen.findByText(item, {}, FIND)).toBeInTheDocument();
     }
+  });
+
+  it("offers a retry on the shelf that failed and recovers when it succeeds", async () => {
+    server.use(
+      http.get(`${TMDB_BASE_URL}/movie/popular`, () =>
+        HttpResponse.json(
+          { status_message: "Popular movies are unavailable." },
+          { status: 500 }
+        )
+      )
+    );
+
+    renderWithProviders({ ui: <Home /> });
+
+    expect(
+      await screen.findByText("Popular movies are unavailable.", {}, FIND)
+    ).toBeInTheDocument();
+
+    const shelf = shelfOf("Popular Movies");
+    const retry = await shelf.findByRole("button", { name: "Try again" });
+
+    server.use(
+      http.get(`${TMDB_BASE_URL}/movie/popular`, () =>
+        HttpResponse.json({
+          results: [movieFixture({ id: 11, title: "Popular Movie" })],
+        })
+      )
+    );
+
+    await userEvent.click(retry);
+
+    const link = await shelf.findByRole("link", { name: /Popular Movie/ });
+    expect(link).toHaveAttribute("href", "/movie/11");
   });
 
   it("starts all five lists at once instead of one after another", async () => {

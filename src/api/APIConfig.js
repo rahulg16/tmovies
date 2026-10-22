@@ -1,3 +1,5 @@
+import Placeholder from "../Assets/placeholder.png";
+
 const TMDB_API_KEY = process.env.REACT_APP_TMDB_API_KEY;
 
 const MISSING_KEY_MESSAGE =
@@ -23,6 +25,22 @@ const apiConfig = {
   apiKey: TMDB_API_KEY,
   originalImage: (imgPath) => buildImageUrl("original", imgPath),
   w500: (imgPath) => buildImageUrl("w500", imgPath),
+  /**
+   * A poster sized image. Posters are shown small, so the full `original`
+   * resolution is wasted bandwidth.
+   *
+   * Falls back to the bundled placeholder, so a poster is never rendered with
+   * an empty `src`.
+   */
+  posterImage: (imgPath) => buildImageUrl("w500", imgPath) || Placeholder,
+  /**
+   * A full bleed backdrop. Backdrops cover the whole viewport, so they keep
+   * the `original` resolution.
+   *
+   * Returns `""` when there is no backdrop, so the caller can leave the
+   * element out instead of rendering `<img src="">`.
+   */
+  backdropImage: (imgPath) => buildImageUrl("original", imgPath),
 };
 
 export default apiConfig;

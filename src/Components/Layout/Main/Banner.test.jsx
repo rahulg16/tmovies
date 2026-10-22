@@ -1,5 +1,5 @@
 import React from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse, delay } from "msw";
 
@@ -28,7 +28,7 @@ describe("the trending hero", () => {
     renderWithProviders({ ui: <Banner /> });
 
     const watchNow = await screen.findAllByRole(
-      "button",
+      "link",
       { name: "Watch Now" },
       FIND
     );
@@ -168,5 +168,119 @@ describe("the trending hero", () => {
       screen.queryByRole("button", { name: "Watch Trailer" })
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+  });
+});
+
+/** The width jsdom reports for the carousel. */
+const SLIDE_WIDTH = 320;
+
+describe("the slideshow of the trending hero", () => {
+  const originalScrollTo = Element.prototype.scrollTo;
+
+  beforeEach(() => {
+    // jsdom does not implement scrolling.
+    Element.prototype.scrollTo = jest.fn();
+    // jsdom reports every element as zero pixels wide.
+    jest
+      .spyOn(Element.prototype, "clientWidth", "get")
+      .mockReturnValue(SLIDE_WIDTH);
+  });
+
+  afterEach(() => {
+    Element.prototype.scrollTo = originalScrollTo;
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  it("moves on to the next slide after six seconds", async () => {
+    jest.useFakeTimers();
+
+    renderWithProviders({ ui: <Banner /> });
+
+    await screen.findByRole("heading", { name: "The Dark Knight" }, FIND);
+
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
+
+    expect(Element.prototype.scrollTo).toHaveBeenCalledWith({
+      left: SLIDE_WIDTH,
+      behavior: "smooth",
+    });
+  });
+
+  it("stays on the same slide while the slideshow is paused", async () => {
+    jest.useFakeTimers();
+
+    renderWithProviders({ ui: <Banner /> });
+
+    await screen.findByRole("heading", { name: "The Dark Knight" }, FIND);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Pause slideshow" })
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
+
+    expect(Element.prototype.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("offers a control that pauses and resumes the slideshow", async () => {
+    renderWithProviders({ ui: <Banner /> });
+
+    const pauseControl = await screen.findByRole(
+      "button",
+      { name: "Pause slideshow" },
+      FIND
+    );
+
+    expect(pauseControl).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(pauseControl);
+
+    const playControl = screen.getByRole("button", { name: "Play slideshow" });
+    expect(playControl).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(playControl);
+
+    expect(
+      screen.getByRole("button", { name: "Pause slideshow" })
+    ).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("stays on the same slide while the pointer rests on the carousel", async () => {
+    jest.useFakeTimers();
+
+    renderWithProviders({ ui: <Banner /> });
+
+    await screen.findByRole("heading", { name: "The Dark Knight" }, FIND);
+
+    fireEvent.mouseOver(
+      screen.getByRole("region", { name: "Trending titles" })
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
+
+    expect(Element.prototype.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it("stays on the same slide while the keyboard focus is inside the carousel", async () => {
+    jest.useFakeTimers();
+
+    renderWithProviders({ ui: <Banner /> });
+
+    await screen.findByRole("heading", { name: "The Dark Knight" }, FIND);
+
+    fireEvent.focusIn(screen.getAllByRole("link", { name: "Watch Now" })[0]);
+
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
+
+    expect(Element.prototype.scrollTo).not.toHaveBeenCalled();
   });
 });

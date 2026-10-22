@@ -1,83 +1,94 @@
-import * as React from "react";
-import { useState } from "react";
-import Box from "@mui/material/Box";
+import React, { useState } from "react";
 import Button from "@mui/material/Button";
-import Modal from "@mui/material/Modal";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
+import Skeleton from "@mui/material/Skeleton";
+import Typography from "@mui/material/Typography";
+import CloseIcon from "@mui/icons-material/Close";
+
+import { selectPrimaryTrailer, youtubeEmbedUrl } from "../../../api/videos";
 import { useFilmDetails } from "../../../hooks/useDetails";
-import './ButtonModal.css'
+import VideoEmbed from "../VideoEmbed/VideoEmbed";
 
-const style = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 650,
-  height: 350,
-  bgcolor: "black",
-  boxShadow: 24,
-  p: 4,
-};
-
-const btnStyle = {
-  bgcolor: "red",
+const buttonSx = {
   borderRadius: "25px",
-  color: "white",
   fontWeight: "bold",
   textTransform: "capitalize",
-  padding: "8px 25px",
+  px: "25px",
+  py: "8px",
   minWidth: "140px",
 };
 
 export default function ButtonModal({ BtnName, data_id, data_type }) {
   const [open, setOpen] = useState(false);
 
-  const { data: film, isLoading, isError } = useFilmDetails(data_type, data_id, {
+  const {
+    data: film,
+    isLoading,
+    isError,
+  } = useFilmDetails(data_type, data_id, {
     enabled: open,
   });
 
-  const trailerKey = film?.videos?.results?.[0]?.key || "";
+  const trailer = selectPrimaryTrailer(film?.videos?.results);
+  const trailerSrc = trailer ? youtubeEmbedUrl(trailer.key) : "";
+  const trailerTitle = trailer?.name || "Movie trailer";
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
   return (
-    <div>
+    <>
       <Button
+        variant="contained"
+        color="primary"
         onClick={handleOpen}
         data-id={data_id}
         data-type={data_type}
-        sx={btnStyle}
-        selected
-        className="trailer-btn"
+        sx={buttonSx}
       >
         {BtnName}
       </Button>
 
-      <Modal
+      <Dialog
         open={open}
         onClose={handleClose}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
+        aria-labelledby="trailer-dialog-title"
+        fullWidth
+        maxWidth="md"
       >
-        <Box sx={style}>
+        <DialogTitle id="trailer-dialog-title" sx={{ pr: 6 }}>
+          {BtnName}
+        </DialogTitle>
+        <IconButton
+          aria-label="Close"
+          onClick={handleClose}
+          sx={{ position: "absolute", right: 8, top: 8 }}
+        >
+          <CloseIcon />
+        </IconButton>
+        <DialogContent>
           {isLoading ? (
-            <p className="trailer-status">Loading trailer...</p>
+            <Skeleton
+              variant="rectangular"
+              aria-hidden="true"
+              sx={{ width: "100%", aspectRatio: "16 / 9", borderRadius: "12px" }}
+            />
           ) : isError ? (
-            <p className="trailer-status">Could not load the trailer.</p>
-          ) : trailerKey ? (
-            <iframe
-              width="650"
-              height="350"
-              src={`https://www.youtube.com/embed/${trailerKey}`}
-              title="YouTube video player"
-              frameBorder="0"
-              allowFullScreen
-            ></iframe>
+            <Typography textAlign="center" sx={{ py: 6 }} color="error">
+              Could not load the trailer.
+            </Typography>
+          ) : trailerSrc ? (
+            <VideoEmbed src={trailerSrc} title={trailerTitle} />
           ) : (
-            <p className="trailer-status">No trailer available.</p>
+            <Typography textAlign="center" sx={{ py: 6 }}>
+              No trailer available.
+            </Typography>
           )}
-        </Box>
-      </Modal>
-    </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

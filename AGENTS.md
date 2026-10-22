@@ -19,7 +19,7 @@ trailers and similar titles. Plain JavaScript — no TypeScript, no state librar
 | Build | Create React App 5.0.1 (`react-scripts`) |
 | Server state | TanStack Query 5.104.5 (`@tanstack/react-query`) |
 | Routing | react-router-dom 6.3, `HashRouter` |
-| Styling | Plain CSS files + MUI 5.8.1 (only in `ButtonModal`) |
+| Styling | MUI 5.18 via `sx` + a dark theme — no CSS files |
 | Tests | Jest 27.5.1 + jsdom 16.7 + React Testing Library 13 |
 
 ### Commands
@@ -55,18 +55,21 @@ Page/Component  ->  hook (*Query factory + useQuery)  ->  api/tmdb.js  ->  api/c
 
 ```
 src/
-  index.js            ReactDOM root: StrictMode + QueryClientProvider + HashRouter
+  index.js            ReactDOM root: ThemeProvider + CssBaseline + QueryClientProvider + HashRouter
   App.js              <Routes> only — no provider, no router
   queryClient.js      shared QueryClient defaults
-  api/                APIConfig.js client.js endpoints.js queryKeys.js tmdb.js
+  theme/              theme.js (dark tokens) index.js hideScrollbar.js visuallyHidden.js
+  api/                APIConfig.js client.js endpoints.js queryKeys.js tmdb.js videos.js
   hooks/              useDebouncedValue.js useDetails.js useMovieLists.js
                       useSearch.js useTrending.js useTvLists.js
   Components/
     Layout/NavBar/NavBar.js
     Layout/Main/Banner.js MovieInfo.jsx MoviesList.jsx
-    UI/Badge/Badge.jsx  UI/ButtonModal/ButtonModal.js
+    UI/Badge/GenreChip.jsx  UI/ButtonModal/ButtonModal.js
     UI/Card/Card.js  UI/Card/SimpleCard.js
     UI/Cast/Cast.jsx  UI/SimpleButton/Button.js
+    UI/ErrorState/ErrorState.jsx  UI/Skeleton/PosterSkeleton.jsx
+    UI/VideoEmbed/VideoEmbed.jsx
   Pages/
     Home/Home.jsx  Home/Header.jsx  Home/SearchedMovies.jsx
     InfoPage/InfoPage.jsx  InfoPage/TrailerSection.jsx
@@ -81,7 +84,8 @@ src/
 |---|---|
 | Add a TMDB endpoint | `api/endpoints.js` → `api/tmdb.js` → `api/queryKeys.js` → a `*Query` factory in `hooks/` → the component |
 | Change a list's cache window | the `staleTime` in the relevant `hooks/use*.js` factory, or pass `{ staleTime }` at the call site |
-| Change image sizing | `api/APIConfig.js` (`originalImage` / `w500`) |
+| Change image sizing | `api/APIConfig.js` (`originalImage` / `w500` / `posterImage` / `backdropImage`) |
+| Change colours, fonts or component defaults | `src/theme/theme.js` |
 | Change the request timeout | `REQUEST_TIMEOUT` in `api/client.js:3` |
 | Change global cache defaults | `src/queryClient.js` |
 | Add or change a route | `src/App.js:12-18` |
@@ -89,6 +93,9 @@ src/
 | Change the search debounce delay | `useDebouncedValue(term, 400)` in `Pages/Movies/Movies.jsx:10` and `Pages/Tv Series/TvSeries.jsx:10` |
 | Change what a list shows when empty | `Components/Layout/Main/MoviesList.jsx` |
 | Change the hero's item count | `selectTrending` in `Components/Layout/Main/Banner.js:11` |
+| Change the hero's slide duration | `AUTOPLAY_INTERVAL` in `Components/Layout/Main/Banner.js:22` |
+| Change which trailer is shown | `selectPrimaryTrailer` / `selectTrailerList` in `api/videos.js` |
+| Change how long a video may load before the fallback appears | `VIDEO_LOAD_TIMEOUT` in `Components/UI/VideoEmbed/VideoEmbed.jsx` |
 | Add a test | the owning test file — see the testing map in §13 |
 | Change CI | `.github/workflows/test.yml` (planned — see `plans/CI_PLAN.md`) |
 
@@ -96,8 +103,9 @@ src/
 
 | Document | What it covers |
 |---|---|
-| [`plans/UNIT_TEST_PLAN.md`](plans/UNIT_TEST_PLAN.md) | The behaviour-first test strategy, the 11 test files, and every scenario |
+| [`plans/UNIT_TEST_PLAN.md`](plans/UNIT_TEST_PLAN.md) | The behaviour-first test strategy, the test files, and every scenario |
 | [`plans/CI_PLAN.md`](plans/CI_PLAN.md) | The GitHub Actions workflow, coverage gate, and secrets handling |
+| [`plans/MUI_MIGRATION_PLAN.md`](plans/MUI_MIGRATION_PLAN.md) | The completed CSS → MUI `sx`/theme migration, bug register and verification notes |
 | [`plans/REACT_QUERY_OPTIMIZATION_PLAN.md`](plans/REACT_QUERY_OPTIMIZATION_PLAN.md) | Proposed cache and prefetch optimisations (not yet implemented) |
 | [`README.md`](README.md) | Setup, deployment and security notes for the TMDB key |
 
@@ -136,8 +144,8 @@ npm start
 | `npm run build` | Production bundle into `build/` |
 | `npm run deploy` | `predeploy` builds, then `gh-pages -d build` publishes |
 | `npm test` | Jest in watch mode (CRA default) |
-| `npm run test:ci` | *Planned* — run the suite once, non-interactive |
-| `npm run test:coverage` | *Planned* — run the suite with coverage and the threshold gate |
+| `npm run test:ci` | Run the suite once, non-interactive |
+| `npm run test:coverage` | Run the suite with coverage and the threshold gate |
 | `npm run eject` | One-way; removes the CRA build config |
 
 There is no `lint` or `typecheck` script. CRA's `eslintConfig` in `package.json` extends
@@ -197,26 +205,31 @@ CRA hard-codes the Jest config in `react-scripts/scripts/utils/createJestConfig.
 | `src/hooks/useDetails.js` | Detail + similar queries. `DETAILS_STALE_TIME = 10 min`. Also the type-aware `useFilmDetails(type, id)` / `useSimilarFilms(type, id)`. |
 | `src/Pages/Home/Home.jsx` | The home screen: `useQueries` over five list queries, plus `NavBar`, `Banner`, five `MoviesList`s. |
 | `src/Pages/Home/Header.jsx` | The search header: image, title, input with `aria-label={`Search ${title.toLowerCase()}`}`, and a "Search" submit button. |
-| `src/Pages/Home/SearchedMovies.jsx` | Search results grid: skeleton / error / results + an "Updating results..." hint while refetching. |
+| `src/Pages/Home/SearchedMovies.jsx` | Search results grid: skeleton / error / results + an "Updating results..." hint while refetching, and a "No results found." empty state. |
 | `src/Pages/Movies/Movies.jsx` | Movie search screen. `useState("batman")` + 400 ms debounce. |
 | `src/Pages/Tv Series/TvSeries.jsx` | TV search screen. `useState("Dexter")` + 400 ms debounce. |
 | `src/Pages/InfoPage/InfoPage.jsx` | Detail screen for both media types. Scrolls to top on `id`/`type` change. |
-| `src/Pages/InfoPage/TrailerSection.jsx` | Renders the YouTube iframes for a film's videos. |
+| `src/Pages/InfoPage/TrailerSection.jsx` | Renders up to three YouTube trailers, chosen by `selectTrailerList`. Returns `null` when there is none. |
 | `src/Components/Layout/NavBar/NavBar.js` | Logo ("T Movies") plus Home / Movies / Tv Series links. |
-| `src/Components/Layout/Main/Banner.js` | The trending hero. Loading skeleton, error + "Try again", and the item list. |
-| `src/Components/Layout/Main/MoviesList.jsx` | A titled shelf of poster links. Skeleton / error / items. |
+| `src/Components/Layout/Main/Banner.js` | The trending hero: a horizontal carousel that advances every `AUTOPLAY_INTERVAL` (6 s), with a pause/play control. Loading skeleton, error + "Try again", and the slides. |
+| `src/Components/Layout/Main/MoviesList.jsx` | A titled shelf of poster links. Skeleton / error (with optional `onRetry`) / items. |
 | `src/Components/Layout/Main/MovieInfo.jsx` | The detail block: title, genre badges, truncated synopsis, cast. |
 | `src/Components/UI/Card/Card.js` | A linked poster card with a title. Used by search results. |
 | `src/Components/UI/Card/SimpleCard.js` | A bare poster image. |
-| `src/Components/UI/Badge/Badge.jsx` | A genre pill. |
+| `src/Components/UI/Badge/GenreChip.jsx` | A genre pill. |
+| `src/Components/UI/ErrorState/ErrorState.jsx` | Shared error message (`role="alert"`) + optional retry. `isRetrying` disables the button and shows "Retrying...". |
+| `src/Components/UI/Skeleton/PosterSkeleton.jsx` | Shared poster/name skeleton block. |
+| `src/Components/UI/VideoEmbed/VideoEmbed.jsx` | Responsive 16:9 YouTube embed with `loading \| ready \| delayed \| error` states and a `VIDEO_LOAD_TIMEOUT` fallback link. |
 | `src/Components/UI/Cast/Cast.jsx` | The "Casts" block, first 5 people. |
 | `src/Components/UI/SimpleButton/Button.js` | A plain `<button>` with a label. |
 | `src/Components/UI/ButtonModal/ButtonModal.js` | The MUI modal that lazily fetches a film's trailer when opened. |
-| `src/Assets/placeholder.png` | Poster placeholder. |
+| `src/api/videos.js` | Pure selectors for TMDB videos: `selectPrimaryTrailer`, `selectTrailerList`, `youtubeEmbedUrl`. |
+| `src/theme/visuallyHidden.js` | `visuallyHiddenSx`, shared by the screen-reader-only status text. |
+| `src/Assets/placeholder.png` | Poster placeholder, used by `apiConfig.posterImage` when a poster is missing. |
 | `src/Assets/high-resolution-black-background-09.jpg` | The search header background. |
 
-Each component has a sibling CSS file with the same basename. `src/Pages/Tv Series/` contains a
-space — quote the path in shell commands.
+`src/Pages/Tv Series/` contains a space — quote the path in shell commands. There are no CSS
+files: styling lives in `src/theme/` and inline `sx` props.
 
 ## 5. Architecture and data flow
 
@@ -282,6 +295,8 @@ Per-family overrides: lists and details 10 min, search 1 min, trending 5 min.
 | `apiKey` | `process.env.REACT_APP_TMDB_API_KEY` |
 | `originalImage(path)` | `https://image.tmdb.org/t/p/original/<path>` |
 | `w500(path)` | `https://image.tmdb.org/t/p/w500/<path>` |
+| `posterImage(path)` | w500 poster, falls back to the bundled placeholder |
+| `backdropImage(path)` | `original` backdrop, `""` when TMDB has none |
 
 `buildImageUrl` (`:15-19`) returns `""` for a falsy path, and normalises a missing leading
 slash. Line 6 throws when the key is missing and `NODE_ENV !== "production"`; in production it
@@ -405,25 +420,29 @@ Screen behaviours worth knowing:
 - **InfoPage** — `window.scrollTo({ top: 0, left: 0, behavior: "auto" })` on `[id, type]`
   (`InfoPage.jsx:14-16`). The similar shelf is titled `Similar Movies` for movies and
   `Similar Tv Series` for TV (`InfoPage.jsx:63`). The trailer block renders only when
-  `film.videos !== undefined`.
+  `selectTrailerList(film?.videos?.results)` finds a YouTube trailer.
+- **Banner** — the hero is a horizontal carousel. It advances to the next slide every
+  `AUTOPLAY_INTERVAL` (6 s) and wraps around. It pauses on pointer hover, on keyboard focus
+  inside the carousel, while the tab is hidden, and when the user presses the pause control.
+  `prefers-reduced-motion: reduce` starts it paused.
 
 ## 9. Component inventory
 
 | Component | Props | Branches rendered |
 |---|---|---|
 | `NavBar` | — | Logo link, Home / Movies / Tv Series links |
-| `Banner` | — | Loading skeleton · error + "Try again" · up to 8 items (`selectTrending` slices to 8) |
-| `MoviesList` | `contentArr, title, contentType, isLoading, isError, error` | Loading skeleton (6) · error message · items |
+| `Banner` | — | Loading skeleton · error + "Try again" · up to 8 items (`selectTrending` slices to 8) · pause/play control |
+| `MoviesList` | `contentArr, title, contentType, isLoading, isError, error, onRetry` | Loading skeleton (6) · error message · items |
 | `MovieInfo` | `movie` | `null` when no movie · title · genre badges · truncated synopsis · cast block |
 | `Card` | `movieInfo, type` | Poster image (placeholder fallback) + title, wrapped in a `/<type>/<id>` link |
-| `SimpleCard` | `posterImg` | A bare poster image |
-| `Badge` | `genre` | A genre pill |
+| `SimpleCard` | `posterImg, title, loading` | A bare poster image (w500, placeholder fallback) |
+| `GenreChip` (was `Badge`) | `genre` | A genre pill (`Chip`) |
 | `Cast` | `cast` | "Casts" heading + first 5 people (`Cast.jsx:7`) |
-| `Button` (`SimpleButton`) | `BtnName` | A plain button |
-| `ButtonModal` | `BtnName, data_id, data_type` | Button · modal with loading / error / iframe / "No trailer available." |
+| `Button` (`SimpleButton`) | `BtnName` | A contained MUI button |
+| `ButtonModal` | `BtnName, data_id, data_type` | Button · dialog with loading / error / iframe / "No trailer available." |
 | `Header` | `setSearchTerm, searchTerm, title` | Background image, title, search input, "Search" button |
-| `SearchedMovies` | `moviesArr, type, isLoading, isError, error, isFetching` | Skeleton (10) · error message · cards + "Updating results..." hint |
-| `TrailerSection` | `trailers` | One YouTube iframe per trailer |
+| `SearchedMovies` | `moviesArr, type, isLoading, isError, error, isFetching, onRetry` | Skeleton (10) · error message · cards + "Updating results..." hint · "No results found." empty state |
+| `TrailerSection` | `trailers` | Up to 3 YouTube iframes, or nothing at all |
 
 Content fallbacks worth remembering:
 
@@ -431,6 +450,12 @@ Content fallbacks worth remembering:
 - `MovieInfo` title: `movie.original_name || movie.original_title` (`MovieInfo.jsx:14`).
 - `Banner` title: `movie.original_title || movie.name` (`Banner.js:63`).
 - `MovieInfo` synopsis: truncated at 530 characters, then `"..."` appended (`MovieInfo.jsx:27-29`).
+- Poster images come from `apiConfig.posterImage` (w500 + placeholder fallback) and backdrops
+  from `apiConfig.backdropImage` (original resolution, `""` when TMDB has none, so the element
+  is left out rather than rendered with an empty `src`).
+- Every `<img>` declares its intrinsic `width` and `height` (posters 500x750, backdrops
+  1920x1080), so the browser reserves the space and the page does not jump while an image
+  loads.
 
 ## 10. Environment and secrets
 
@@ -453,15 +478,15 @@ Rules:
 ## 11. Conventions
 
 - Plain JavaScript and JSX. No `tsconfig.json`, no type annotations.
-- File extensions are mixed by family: `.jsx` for `Badge`, `Cast`, `Header`, `MovieInfo`,
+- File extensions are mixed by family: `.jsx` for `GenreChip`, `Cast`, `Header`, `MovieInfo`,
   `MoviesList`, `SearchedMovies`, `Home`, `TvSeries`, `InfoPage`; `.js` elsewhere. **Follow
   the neighbouring file** rather than converting.
-- One CSS file per component, same basename, imported at the top of the component file.
-- Class naming is BEM-ish: `block__element--modifier` (`info-page__status--error`,
-  `content-poster--skeleton`).
-- No CSS modules, no Tailwind, no styled-components. MUI is used in exactly one place
-  (`ButtonModal`) via the `sx` prop.
-- Imports are relative (`../../api/APIConfig`).
+- **No CSS files.** Styling is MUI `sx` props plus `src/theme/theme.js`. Use the callback form
+  for theme-dependent values. No `styled()`, no `makeStyles`, no `className` on MUI components.
+- Repeated patterns live in shared primitives (`PosterSkeleton`, `VideoEmbed`, `ErrorState`,
+  `GenreChip`) rather than repeated `sx` blobs. `hideScrollbarSx` covers scrollbar hiding.
+- Imports are relative (`../../api/APIConfig`). MUI icons use deep paths
+  (`@mui/icons-material/Search`), never the barrel.
 - Hooks live in `src/hooks/`, one file per data family, named `use<Family>.js`.
 
 ## 12. Build and deploy
@@ -484,8 +509,10 @@ npm run deploy    # predeploy builds, gh-pages publishes to the gh-pages branch
 
 ### Status
 
-There is **no test suite today**: no test files, no `src/setupTests.js`, no `jest.config.js`.
-`CI=true npx react-scripts test --watchAll=false --passWithNoTests` exits 0.
+The suite exists: 13 test files under `src/`, a custom jsdom environment
+(`src/test-utils/jestEnv.js`), MSW handlers in `src/test-utils/handlers.js` and a
+`renderWithProviders` helper. It is configured through the `jest` key in `package.json`
+(CRA hard-codes the rest).
 
 The full strategy is in [`plans/UNIT_TEST_PLAN.md`](plans/UNIT_TEST_PLAN.md). This section is
 the short version an agent needs.
@@ -504,16 +531,20 @@ the short version an agent needs.
 | `src/Components/Layout/Main/MoviesList.jsx` | `src/Components/Layout/Main/MoviesList.test.jsx` |
 | `src/Components/Layout/Main/MovieInfo.jsx` | `src/Components/Layout/Main/MovieInfo.test.jsx` |
 | `src/Components/UI/ButtonModal/ButtonModal.js` | `src/Components/UI/ButtonModal/ButtonModal.test.jsx` |
+| `src/Components/UI/VideoEmbed/VideoEmbed.jsx` | `src/Components/UI/VideoEmbed/VideoEmbed.test.jsx` |
+| `src/Components/UI/ErrorState/ErrorState.jsx` | `src/Components/UI/ErrorState/ErrorState.test.jsx` |
 | `src/api/client.js` | `src/api/client.test.js` |
 
-Leaf components (`Badge`, `Button`, `SimpleCard`, `Card`, `Cast`, `TrailerSection`, `NavBar`,
-`Header`) are covered through the screen or component that renders them.
+Leaf components (`GenreChip`, `Button`, `SimpleCard`, `Card`, `Cast`, `TrailerSection`, `NavBar`,
+`Header`, `PosterSkeleton`) are covered through the screen or component that renders them.
+
+The suite is **13 files / 122 tests** and passes with `npm run test:ci`.
 
 ### Harness facts you must know
 
 | Fact | Consequence |
 |---|---|
-| `msw` must be pinned to **2.x** (`2.15.0`) | v3 is ESM-only and Jest 27's legacy resolver cannot load it |
+| `msw` must stay on **2.11.1** | 2.12+ pulls `rettime` / `until-async` / `@open-draft/deferred-promise`, which are ESM-only; Jest 27's legacy resolver cannot load them and every suite fails at import. 2.11.1 depends on the CJS-friendly `@open-draft/until` + `@bundled-es-modules/*` (mapped in `package.json`) |
 | jsdom 16.7 has no `fetch` / `Response` / `TextEncoder` | A custom environment (`src/test-utils/jestEnv.js`) copying Node globals is required; `jest-fixed-jsdom` needs Jest ≥ 28 |
 | CRA hard-codes `testEnvironment: 'jsdom'` | Override it through the npm script: `react-scripts test --env=./src/test-utils/jestEnv.js` |
 | `src/api/APIConfig.js:6` throws at import | `src/test-utils/env.js` must set the key before anything imports it |
@@ -521,9 +552,11 @@ Leaf components (`Badge`, `Button`, `SimpleCard`, `Card`, `Cast`, `TrailerSectio
 | `roots: ['<rootDir>/src']` | Helpers live in `src/test-utils/`, not a top-level `__tests__/` |
 | `user-event` v13 | No `.setup()`; `await userEvent.type(...)` |
 | React Query v5 | `isLoading = isPending && isFetching`; a disabled query is not loading |
-| Test `QueryClient` | Must use `retry: false` (and `gcTime: 0`), or error scenarios stall |
+| Test `QueryClient` | Must use `retry: false`, or error scenarios stall. `gcTime` is 60 s, not 0: a cached entry has to outlive the component that fetched it |
 | `src/index.js` uses `HashRouter` | Tests wrap `App` in `MemoryRouter` with `initialEntries` |
 | `window.scrollTo` is unimplemented in jsdom | Stub it in `src/setupTests.js`; `InfoPage.jsx:15` calls it |
+| `renderWithProviders` wraps in `ThemeProvider` + `CssBaseline` | Tests exercise the real dark theme, so a theme change can break a test |
+| `Element.prototype.scrollTo` does not exist in jsdom | The banner carousel test stubs it; without the stub the autoplay tick is a no-op |
 
 ### Rules for writing a test
 
@@ -540,10 +573,7 @@ Leaf components (`Badge`, `Button`, `SimpleCard`, `Card`, `Cast`, `TrailerSectio
 
 | Issue | Location | Effect |
 |---|---|---|
-| `<Link>` wraps an `<li>` outside a list | `src/Components/Layout/NavBar/NavBar.js:15-24` | Invalid HTML nesting. Navigation still works. |
-| `<Link>` wraps a `<button>` | `src/Components/Layout/Main/Banner.js:67-69` | Invalid HTML nesting. The button's accessible name is still exposed. |
-| `poster_path !== null` | `src/Components/UI/Card/Card.js:13` | Only an explicit `null` falls back to the placeholder. `undefined` reaches `originalImage()`, which returns `""`, so the `<img>` gets `src=""`. |
-| Malformed ternary formatting | `src/Components/Layout/Main/MovieInfo.jsx:27-29` | No behavioural effect. |
+| None currently documented. | — | The MUI migration fixed the invalid link nesting, the `poster_path !== null` fallback and the malformed synopsis ternary. |
 
 ### Gotchas
 
@@ -556,6 +586,9 @@ Leaf components (`Badge`, `Button`, `SimpleCard`, `Card`, `Cast`, `TrailerSectio
 | `Banner` slices to 8 items | `selectTrending` runs inside `useQuery`, so the cache stores the full list and the selection runs on render. |
 | `Home` uses `useQueries`, not five `useQuery` calls | The results are an array, positionally aligned with the queries array. |
 | `SearchedMovies` shows "Updating results..." | Rendered whenever `isFetching` is true, including the first load's background refetch. |
+| `Banner` autoplays | The carousel advances every 6 s. It stops on hover, on focus inside the carousel, while the tab is hidden, and when `prefers-reduced-motion` is set. The pause control is a real `<button>`, so it also pauses it. |
+| `VideoEmbed` swallows a slow player | The skeleton is removed after `VIDEO_LOAD_TIMEOUT` (10 s) and an "Open on YouTube" link appears, so the controls are never blocked forever. |
+| `useFilmDetails` / `useSimilarFilms` keep `enabled` | A caller can pass `enabled`, but it is still ANDed with `!!id`, so a detail query never fires without an id. |
 | React Query devtools render in development only | `src/index.js:19-21`. They are not part of any screen. |
 
 ## 15. How to extend
@@ -577,7 +610,7 @@ Leaf components (`Badge`, `Button`, `SimpleCard`, `Card`, `Cast`, `TrailerSectio
 
 ### Add a screen
 
-1. Create `src/Pages/<Name>/<Name>.jsx` plus a same-named `.css` file.
+1. Create `src/Pages/<Name>/<Name>.jsx`; style it with MUI `sx` (no CSS file).
 2. Register it in `src/App.js:12-18` with a `path` and `element`.
 3. Add a link in `src/Components/Layout/NavBar/NavBar.js`.
 4. Add a test file next to it and register it in the map in §13.
@@ -597,4 +630,5 @@ Leaf components (`Badge`, `Button`, `SimpleCard`, `Card`, `Cast`, `TrailerSectio
 | README — setup, deploy, security | [`README.md`](README.md) |
 | Unit test plan | [`plans/UNIT_TEST_PLAN.md`](plans/UNIT_TEST_PLAN.md) |
 | CI plan | [`plans/CI_PLAN.md`](plans/CI_PLAN.md) |
+| MUI migration plan (implemented) | [`plans/MUI_MIGRATION_PLAN.md`](plans/MUI_MIGRATION_PLAN.md) |
 | React Query optimisation proposals | [`plans/REACT_QUERY_OPTIMIZATION_PLAN.md`](plans/REACT_QUERY_OPTIMIZATION_PLAN.md) |

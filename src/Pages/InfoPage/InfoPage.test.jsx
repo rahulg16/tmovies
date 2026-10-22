@@ -78,15 +78,56 @@ describe("the details of a film", () => {
   it("embeds the trailer of the film", async () => {
     renderWithProviders({ ui: <MovieRoutes />, route: "/movie/550" });
 
-    const trailer = await screen.findByTitle("YouTube video player", {}, FIND);
+    const trailer = await screen.findByTitle("Official Trailer", {}, FIND);
 
     expect(trailer).toHaveAttribute(
       "src",
-      "https://www.youtube.com/embed/trailer-key"
+      "https://www.youtube.com/embed/trailer-key?rel=0&playsinline=1"
     );
     expect(
       screen.getByRole("heading", { name: "Official Trailer" })
     ).toBeInTheDocument();
+  });
+
+  it("shows only the videos that can be played here", async () => {
+    server.use(
+      http.get(`${TMDB_BASE_URL}/movie/550`, () =>
+        HttpResponse.json(
+          movieFixture({
+            id: 550,
+            title: "Movie 550",
+            videos: {
+              results: [
+                {
+                  id: "video-1",
+                  key: "trailer-key",
+                  name: "Official Trailer",
+                  site: "YouTube",
+                  type: "Trailer",
+                  official: true,
+                },
+                {
+                  id: "video-2",
+                  key: "vimeo-key",
+                  name: "Trailer on another site",
+                  site: "Vimeo",
+                  type: "Trailer",
+                },
+              ],
+            },
+          })
+        )
+      )
+    );
+
+    renderWithProviders({ ui: <MovieRoutes />, route: "/movie/550" });
+
+    expect(
+      await screen.findByTitle("Official Trailer", {}, FIND)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Trailer on another site")
+    ).not.toBeInTheDocument();
   });
 
   it("shows no trailer section for a film without videos", async () => {
@@ -107,7 +148,7 @@ describe("the details of a film", () => {
     expect(
       await screen.findByRole("heading", { name: "Movie 550" }, FIND)
     ).toBeInTheDocument();
-    expect(screen.queryByTitle("YouTube video player")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Official Trailer")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Official Trailer" })
     ).not.toBeInTheDocument();
@@ -190,6 +231,39 @@ describe("the details of a film", () => {
     expect(
       await screen.findByText("That film is unavailable.", {}, FIND)
     ).toBeInTheDocument();
+  });
+
+  it("asks for the film again when it could not be loaded", async () => {
+    let attempts = 0;
+
+    server.use(
+      http.get(`${TMDB_BASE_URL}/movie/550`, () => {
+        attempts += 1;
+
+        if (attempts === 1) {
+          return HttpResponse.json(
+            { status_message: "That film is unavailable." },
+            { status: 500 }
+          );
+        }
+
+        return HttpResponse.json(movieFixture({ id: 550, title: "Movie 550" }));
+      })
+    );
+
+    renderWithProviders({ ui: <MovieRoutes />, route: "/movie/550" });
+
+    const retry = await screen.findByRole("button", { name: "Try again" }, FIND);
+    expect(
+      await screen.findByText("That film is unavailable.", {}, FIND)
+    ).toBeInTheDocument();
+
+    await userEvent.click(retry);
+
+    expect(
+      await screen.findByRole("heading", { name: "Movie 550" }, FIND)
+    ).toBeInTheDocument();
+    expect(attempts).toBe(2);
   });
 
   it("keeps the film on screen when the similar titles fail", async () => {

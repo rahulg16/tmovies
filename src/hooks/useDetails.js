@@ -7,38 +7,64 @@ export const DETAILS_STALE_TIME = 10 * 60 * 1000;
 /**
  * Options are forwarded to `useQuery`, so a consumer can override
  * `staleTime`, `gcTime`, `enabled`, `select`, ... per call site.
+ *
+ * `enabled` is the one option that cannot be used to switch a query on
+ * without an id: asking for the details of nothing is still asking for
+ * nothing.
  */
-export const movieDetailsQuery = (id, options = {}) => ({
-  queryKey: queryKeys.movies.details(id),
-  queryFn: ({ signal }) => fetchMovieDetails(id, { signal }),
-  enabled: !!id,
-  staleTime: DETAILS_STALE_TIME,
-  ...options,
-});
+const withIdEnabled = (query, id, options) => {
+  const { enabled = !!id, ...rest } = options;
 
-export const tvDetailsQuery = (id, options = {}) => ({
-  queryKey: queryKeys.tv.details(id),
-  queryFn: ({ signal }) => fetchTvDetails(id, { signal }),
-  enabled: !!id,
-  staleTime: DETAILS_STALE_TIME,
-  ...options,
-});
+  return {
+    ...query,
+    ...rest,
+    enabled: enabled && !!id,
+  };
+};
 
-export const similarMoviesQuery = (id, options = {}) => ({
-  queryKey: queryKeys.movies.similar(id),
-  queryFn: ({ signal }) => fetchSimilarMovies(id, { signal }),
-  enabled: !!id,
-  staleTime: DETAILS_STALE_TIME,
-  ...options,
-});
+export const movieDetailsQuery = (id, options = {}) =>
+  withIdEnabled(
+    {
+      queryKey: queryKeys.movies.details(id),
+      queryFn: ({ signal }) => fetchMovieDetails(id, { signal }),
+      staleTime: DETAILS_STALE_TIME,
+    },
+    id,
+    options
+  );
 
-export const similarTvQuery = (id, options = {}) => ({
-  queryKey: queryKeys.tv.similar(id),
-  queryFn: ({ signal }) => fetchSimilarTv(id, { signal }),
-  enabled: !!id,
-  staleTime: DETAILS_STALE_TIME,
-  ...options,
-});
+export const tvDetailsQuery = (id, options = {}) =>
+  withIdEnabled(
+    {
+      queryKey: queryKeys.tv.details(id),
+      queryFn: ({ signal }) => fetchTvDetails(id, { signal }),
+      staleTime: DETAILS_STALE_TIME,
+    },
+    id,
+    options
+  );
+
+export const similarMoviesQuery = (id, options = {}) =>
+  withIdEnabled(
+    {
+      queryKey: queryKeys.movies.similar(id),
+      queryFn: ({ signal }) => fetchSimilarMovies(id, { signal }),
+      staleTime: DETAILS_STALE_TIME,
+    },
+    id,
+    options
+  );
+
+export const similarTvQuery = (id, options = {}) =>
+  withIdEnabled(
+    {
+      queryKey: queryKeys.tv.similar(id),
+      queryFn: ({ signal }) => fetchSimilarTv(id, { signal }),
+      staleTime: DETAILS_STALE_TIME,
+    },
+    id,
+    options
+  );
 
 export function useMovieDetails(id, options = {}) {
   return useQuery(movieDetailsQuery(id, options));

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import Box from "@mui/material/Box";
+
 import NavBar from "../../Components/Layout/NavBar/NavBar";
 import Header from "../Home/Header";
 import SearchedMovies from "../Home/SearchedMovies";
@@ -9,11 +11,11 @@ function Movies() {
   const [searchTerm, setSearchTerm] = useState("batman");
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 400);
 
-  const { data, isLoading, isError, error, isFetching } =
+  const { data, isLoading, isError, error, isFetching, refetch } =
     useSearchMovies(debouncedSearchTerm);
 
   return (
-    <div>
+    <Box>
       <NavBar />
       <Header
         setSearchTerm={setSearchTerm}
@@ -27,8 +29,9 @@ function Movies() {
         isError={isError}
         error={error}
         isFetching={isFetching}
+        onRetry={() => refetch()}
       />
-    </div>
+    </Box>
   );
 }
 

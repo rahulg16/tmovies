@@ -1,5 +1,5 @@
-import "./App.css";
 import { Routes, Route } from "react-router-dom";
+import Box from "@mui/material/Box";
 
 import InfoPage from "./Pages/InfoPage/InfoPage.jsx";
 import Home from "./Pages/Home/Home.jsx";
@@ -8,7 +8,7 @@ import TvSeries from "./Pages/Tv Series/TvSeries.jsx";
 
 function App() {
   return (
-    <div className="App">
+    <Box sx={{ minHeight: "100vh", overflowX: "hidden" }}>
       <Routes>
         <Route path="/" exact element={<Home />} />
         <Route path="/movie/:id" element={<InfoPage type="movie" />} />
@@ -16,7 +16,7 @@ function App() {
         <Route path="/movies" exact element={<Movies />} />
         <Route path="/tv-series" exact element={<TvSeries />} />
       </Routes>
-    </div>
+    </Box>
   );
 }
 

@@ -11,6 +11,7 @@ import {
   server,
 } from "../../test-utils/mswServer";
 import { TMDB_BASE_URL } from "../../test-utils/constants";
+import { searchResults } from "../../test-utils/fixtures";
 
 const FIND = { timeout: 5000 };
 
@@ -100,7 +101,7 @@ describe("the movie search screen", () => {
     expect(screen.getByText("batman Returns")).toBeInTheDocument();
   });
 
-  it("shows neither result cards nor an error message when the search has no results", async () => {
+  it("says that there are no results when the search found nothing", async () => {
     server.use(
       http.get(`${TMDB_BASE_URL}/search/movie`, () =>
         HttpResponse.json({ results: [] })
@@ -121,7 +122,38 @@ describe("the movie search screen", () => {
     });
 
     expect(resultLinks()).toHaveLength(0);
-    expect(screen.queryAllByRole("paragraph")).toHaveLength(0);
+    expect(screen.getByText("No results found.")).toBeInTheDocument();
+    expect(screen.getByText("Try a different search term.")).toBeInTheDocument();
+  });
+
+  it("offers a retry when the search fails and shows the results once it succeeds", async () => {
+    server.use(
+      http.get(`${TMDB_BASE_URL}/search/movie`, () =>
+        HttpResponse.json(
+          { status_message: "The search is unavailable." },
+          { status: 500 }
+        )
+      )
+    );
+
+    renderWithProviders({ ui: <Movies />, route: "/movies" });
+
+    expect(
+      await screen.findByText("The search is unavailable.", {}, FIND)
+    ).toBeInTheDocument();
+
+    server.use(
+      http.get(`${TMDB_BASE_URL}/search/movie`, () =>
+        HttpResponse.json({ results: searchResults("movie", "batman") })
+      )
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(
+      await screen.findByText("batman Begins", {}, FIND)
+    ).toBeInTheDocument();
+    expect(resultLinks()).toHaveLength(2);
   });
 
   it("does not reload the page when the search button is pressed", async () => {

@@ -90,9 +90,9 @@ describe("the details of a film", () => {
       })
     );
 
-    expect(screen.getByAltText("posterImage")).toHaveAttribute(
+    expect(screen.getByAltText("The Poster Film")).toHaveAttribute(
       "src",
-      "https://image.tmdb.org/t/p/original/poster-7.jpg"
+      "https://image.tmdb.org/t/p/w500/poster-7.jpg"
     );
   });
 

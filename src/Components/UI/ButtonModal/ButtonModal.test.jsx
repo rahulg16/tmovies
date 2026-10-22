@@ -40,10 +40,53 @@ describe("the trailer button", () => {
       screen.getByRole("button", { name: "Watch Trailer" })
     );
 
-    const trailer = await screen.findByTitle("YouTube video player", {}, FIND);
+    const trailer = await screen.findByTitle("Official Trailer", {}, FIND);
     expect(trailer).toHaveAttribute(
       "src",
-      "https://www.youtube.com/embed/trailer-key"
+      "https://www.youtube.com/embed/trailer-key?rel=0&playsinline=1"
+    );
+  });
+
+  it("plays the official trailer rather than the first video", async () => {
+    server.use(
+      http.get(`${TMDB_BASE_URL}/movie/550`, () =>
+        HttpResponse.json(
+          movieFixture({
+            id: 550,
+            title: "Movie 550",
+            videos: {
+              results: [
+                {
+                  id: "video-1",
+                  key: "teaser-key",
+                  name: "Teaser",
+                  site: "YouTube",
+                  type: "Teaser",
+                },
+                {
+                  id: "video-2",
+                  key: "official-key",
+                  name: "Official Trailer",
+                  site: "YouTube",
+                  type: "Trailer",
+                  official: true,
+                },
+              ],
+            },
+          })
+        )
+      )
+    );
+
+    renderButton();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Watch Trailer" })
+    );
+
+    const trailer = await screen.findByTitle("Official Trailer", {}, FIND);
+    expect(trailer).toHaveAttribute(
+      "src",
+      "https://www.youtube.com/embed/official-key?rel=0&playsinline=1"
     );
   });
 
@@ -62,6 +105,41 @@ describe("the trailer button", () => {
     expect(
       await screen.findByText("No trailer available.", {}, FIND)
     ).toBeInTheDocument();
+  });
+
+  it("says so when the film's videos cannot be played here", async () => {
+    server.use(
+      http.get(`${TMDB_BASE_URL}/movie/550`, () =>
+        HttpResponse.json(
+          movieFixture({
+            id: 550,
+            title: "Movie 550",
+            videos: {
+              results: [
+                {
+                  id: "video-1",
+                  key: "vimeo-key",
+                  name: "Trailer",
+                  site: "Vimeo",
+                  type: "Trailer",
+                  official: true,
+                },
+              ],
+            },
+          })
+        )
+      )
+    );
+
+    renderButton();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Watch Trailer" })
+    );
+
+    expect(
+      await screen.findByText("No trailer available.", {}, FIND)
+    ).toBeInTheDocument();
+    expect(screen.queryByTitle("Trailer")).not.toBeInTheDocument();
   });
 
   it("shows a message when the trailer cannot be loaded", async () => {
@@ -89,8 +167,8 @@ describe("the trailer button", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Watch Trailer" })
     );
-    await screen.findByTitle("YouTube video player", {}, FIND);
-    expect(screen.getByRole("presentation")).toBeInTheDocument();
+    await screen.findByTitle("Official Trailer", {}, FIND);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
 
     const focused = await waitFor(() => {
       expect(document.activeElement).not.toBe(document.body);
@@ -100,8 +178,8 @@ describe("the trailer button", () => {
     fireEvent.keyDown(focused, { key: "Escape", code: "Escape" });
 
     await waitFor(() => {
-      expect(screen.queryByTitle("YouTube video player")).not.toBeInTheDocument();
-      expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
+      expect(screen.queryByTitle("Official Trailer")).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 });

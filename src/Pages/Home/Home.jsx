@@ -1,25 +1,31 @@
 import React from "react";
+import Box from "@mui/material/Box";
 import { useQueries } from "@tanstack/react-query";
-import "./Home.css";
+
 import NavBar from "../../Components/Layout/NavBar/NavBar";
 import Banner from "../../Components/Layout/Main/Banner";
 import MoviesList from "../../Components/Layout/Main/MoviesList.jsx";
-import { popularMoviesQuery, topRatedMoviesQuery, upcomingMoviesQuery } from "../../hooks/useMovieLists";
+import {
+  popularMoviesQuery,
+  topRatedMoviesQuery,
+  upcomingMoviesQuery,
+} from "../../hooks/useMovieLists";
 import { popularTvQuery, topRatedTvQuery } from "../../hooks/useTvLists";
 
 function Home() {
-  const [popularMovies, topRatedMovies, upcomingMovies, popularTv, topTv] = useQueries({
-    queries: [
-      popularMoviesQuery(),
-      topRatedMoviesQuery(),
-      upcomingMoviesQuery(),
-      popularTvQuery(),
-      topRatedTvQuery(),
-    ],
-  });
+  const [popularMovies, topRatedMovies, upcomingMovies, popularTv, topTv] =
+    useQueries({
+      queries: [
+        popularMoviesQuery(),
+        topRatedMoviesQuery(),
+        upcomingMoviesQuery(),
+        popularTvQuery(),
+        topRatedTvQuery(),
+      ],
+    });
 
   return (
-    <div>
+    <Box>
       <NavBar />
       <Banner />
       <MoviesList
@@ -29,6 +35,7 @@ function Home() {
         isLoading={popularMovies.isLoading}
         isError={popularMovies.isError}
         error={popularMovies.error}
+        onRetry={() => popularMovies.refetch()}
       />
       <MoviesList
         contentArr={topRatedMovies.data?.results}
@@ -37,6 +44,7 @@ function Home() {
         isLoading={topRatedMovies.isLoading}
         isError={topRatedMovies.isError}
         error={topRatedMovies.error}
+        onRetry={() => topRatedMovies.refetch()}
       />
       <MoviesList
         contentArr={upcomingMovies.data?.results}
@@ -45,6 +53,7 @@ function Home() {
         isLoading={upcomingMovies.isLoading}
         isError={upcomingMovies.isError}
         error={upcomingMovies.error}
+        onRetry={() => upcomingMovies.refetch()}
       />
       <MoviesList
         contentArr={popularTv.data?.results}
@@ -53,6 +62,7 @@ function Home() {
         isLoading={popularTv.isLoading}
         isError={popularTv.isError}
         error={popularTv.error}
+        onRetry={() => popularTv.refetch()}
       />
       <MoviesList
         contentArr={topTv.data?.results}
@@ -61,8 +71,9 @@ function Home() {
         isLoading={topTv.isLoading}
         isError={topTv.isError}
         error={topTv.error}
+        onRetry={() => topTv.refetch()}
       />
-    </div>
+    </Box>
   );
 }
 
