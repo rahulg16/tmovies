@@ -47,12 +47,27 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+
+      - name: Save PR image as artifact
+        if: github.event_name == 'pull_request'
+        run: |
+          docker save ${{ steps.meta.outputs.tags }} -o tmovies-pr-${{ github.event.number }}.tar
+          gzip tmovies-pr-${{ github.event.number }}.tar
+
+      - name: Upload PR image artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmovies-docker-image-pr-${{ github.event.number }}
+          path: tmovies-pr-${{ github.event.number }}.tar.gz
+          retention-days: 7
 
   test:
     runs-on: ubuntu-latest
