@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Build outputs (will be rebuilt in container)
+dist
+build
+
+# Version control
+.git
+.gitignore
+
+# IDE/OS
+.idea
+.vscode
+.DS_Store
+
+# Environment files (secrets not in image)
+.env
+.env.*
+!.env.example
+
+# Testing
+coverage
+
+# Logs
+*.log
+npm-debug.log*
+
+# Misc
+*.local
+.vercel
+.netlify
