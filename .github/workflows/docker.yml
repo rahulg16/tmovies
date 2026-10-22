@@ -80,3 +80,9 @@ jobs:
       - run: npm ci
       - run: npm run test:ci
       - run: npm run build
+
+      - name: Print npm debug logs on failure
+        if: failure()
+        run: |
+          echo "=== Displaying npm debug logs ==="
+          cat /home/runner/.npm/_logs/*.log 2>/dev/null || echo "No npm debug logs found"
