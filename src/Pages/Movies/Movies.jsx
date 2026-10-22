@@ -1,38 +1,33 @@
-import React, { useState, useEffect } from "react";
-import apiConfig from "../../Api/APIConfig";
+import React, { useState } from "react";
 import NavBar from "../../Components/Layout/NavBar/NavBar";
 import Header from "../Home/Header";
 import SearchedMovies from "../Home/SearchedMovies";
-
-const axios = require("axios");
+import useDebouncedValue from "../../hooks/useDebouncedValue";
+import { useSearchMovies } from "../../hooks/useSearch";
 
 function Movies() {
-  let [searchTerm, setSearchTerm] = useState("batman");
+  const [searchTerm, setSearchTerm] = useState("batman");
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 400);
 
-  let [moviesArr, setMoviesArr] = useState([]);
-
-  useEffect(() => {
-    getMovies(searchTerm) 
-  }, [searchTerm])
-
-  async function getMovies(searchKeyword) {
-    try {
-      let response = await axios.get(
-        `${apiConfig.searchMovies(searchKeyword)}`
-      );
-
-      setMoviesArr(response.data.results);
-
-    } catch (error) {
-      console.error(error);
-    }
-  }
+  const { data, isLoading, isError, error, isFetching } =
+    useSearchMovies(debouncedSearchTerm);
 
   return (
     <div>
       <NavBar />
-      <Header setSearchTerm={setSearchTerm} searchTerm={searchTerm} title='Movies'/>
-      <SearchedMovies moviesArr={moviesArr} type='movie'/>
+      <Header
+        setSearchTerm={setSearchTerm}
+        searchTerm={searchTerm}
+        title="Movies"
+      />
+      <SearchedMovies
+        moviesArr={data?.results}
+        type="movie"
+        isLoading={isLoading}
+        isError={isError}
+        error={error}
+        isFetching={isFetching}
+      />
     </div>
   );
 }

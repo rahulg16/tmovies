@@ -32,3 +32,17 @@
   top: 0;
   left: 0;
 }
+
+.info-page__status {
+  width: 100%;
+  margin: 0;
+  padding: 120px 20px 40px;
+  color: white;
+  text-align: center;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+.info-page__status--error {
+  color: #ff8080;
+}
+

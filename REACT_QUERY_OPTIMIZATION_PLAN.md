@@ -37,7 +37,9 @@ npm install @tanstack/react-query
 npm install --save-dev @tanstack/react-query-devtools
 ```
 
-Compatible with React 18 and react-scripts 5. Use v4 or v5 - either is fine; this plan targets a v5-compatible structure but is adaptable.
+Compatible with React 18 and react-scripts 5. v5 is used (`gcTime` replaces `cacheTime`).
+
+`axios` is **not** used - the API layer is built on the native `fetch` API.
 
 ## Architecture Changes
 
@@ -64,12 +66,13 @@ Create a clean API structure under `src/api/`:
 
 | File | Purpose |
 |---|---|
-| `src/api/client.js` | Axios instance with baseURL, timeout, and request/response interceptors |
-| `src/api/tmdb.js` | Pure functions for each endpoint (returns data, not full axios response) |
+| `src/api/APIConfig.js` | Env based config: base URLs, image helpers, TMDB key |
+| `src/api/client.js` | `fetch` wrapper with base url, timeout, abort support and error normalisation |
+| `src/api/tmdb.js` | Pure functions for each endpoint (returns data, not a full response) |
 | `src/api/queryKeys.js` | Centralized key factory for consistent keys & invalidation |
-| `src/api/endpoints.js` (optional) | URL builders using env-based key |
+| `src/api/endpoints.js` | URL builders for every TMDB path |
 
-Also migrate from `const axios = require("axios")` to `import axios from 'axios'` everywhere.
+**No axios.** The whole app talks to TMDB through React Query and the native `fetch` API, so `axios` was removed from `package.json` and no component performs a raw HTTP call.
 
 ### 3) Query Keys Factory
 Example structure:
@@ -105,12 +108,18 @@ Create hooks under `src/hooks/`:
 | `useTrendingDay()` | Banner fetch | `staleTime` ~1-5 min |
 | `usePopularMovies()`, `useUpcomingMovies()`, `useTopRatedMovies()` | Home movie lists | Can fetch in parallel or via `useQueries` |
 | `usePopularTv()`, `useTopRatedTv()` | Home TV lists | Same as above |
-| `useMovieDetails(id)` | InfoPage movie details | `enabled: !!id` |
-| `useTvDetails(id)` | InfoPage TV details | `enabled: !!id` |
+| `useMovieDetails(id)`, `useTvDetails(id)` | InfoPage details | `enabled: !!id` |
 | `useSimilarMovies(id)`, `useSimilarTv(id)` | InfoPage similar | `enabled: !!id` |
 | `useSearchMovies(keyword)`, `useSearchTv(keyword)` | Movies/TvSeries search | `enabled: !!keyword?.trim()`, use debounced keyword |
 
-Consider using `useQueries` in Home to fetch all lists concurrently without `setTimeout`s.
+`useQueries` is used in Home to fetch all five lists concurrently without `setTimeout`s.
+
+Every hook forwards the options it receives to `useQuery`, so a consumer can override
+`staleTime`, `gcTime`, `enabled`, `select`, ... per call site:
+
+```jsx
+usePopularMovies({ staleTime: 60 * 1000, select: (data) => data.results.slice(0, 10) });
+```
 
 ### 5) Component Migrations
 
@@ -123,6 +132,8 @@ Consider using `useQueries` in Home to fetch all lists concurrently without `set
 | `src/Pages/Tv Series/TvSeries.jsx` | Mirror Movies migration for TV search. |
 | `src/Pages/InfoPage/InfoPage.jsx` | Use `useMovieDetails`/`useTvDetails` + `useSimilar*`. Prefer route params via `useParams()` to avoid localStorage/context hacks where possible. |
 | `src/Pages/InfoPage/TrailerSection.jsx` | Consume `videos` from details query when using `append_to_response` to avoid extra requests. |
+| `src/Components/UI/ButtonModal/ButtonModal.js` | Reuse the cached details query (enabled only while the modal is open) instead of its own request. |
+| `src/Components/UI/Cast/Cast.jsx`, `src/Components/Layout/Main/Banner.js` | Never mutate cached data (use `slice()`), otherwise React Query's cache is corrupted. |
 
 ## API Key & GitHub Pages
 
@@ -136,7 +147,7 @@ Consider using `useQueries` in Home to fetch all lists concurrently without `set
    - Create local `.env` with your actual key
 
 2. **Update API config**
-   - Update `src/Api/APIConfig.js` to read `process.env.REACT_APP_TMDB_API_KEY`
+   - Update `src/api/APIConfig.js` to read `process.env.REACT_APP_TMDB_API_KEY`
    - Fail fast in development with a clear error if missing
    - Ensure all URLs use the env-based key
 
@@ -158,22 +169,21 @@ Consider using `useQueries` in Home to fetch all lists concurrently without `set
 **Answer to your question:** No, you do not need to create a new API key for each gh-pages deployment. Reuse the same key. Just ensure it's injected at build time via env/secret and restrict it by referrer in TMDB.
 
 ## Testing & Verification
-- [ ] All routes load correctly (`/`, `/movies`, `/tv-series`, `/movie/:id`, `/tv/:id`)
-- [ ] Direct refresh/bookmark on detail pages works
-- [ ] Search works with debouncing (no excessive requests)
-- [ ] No setTimeouts remain in data fetching code
-- [ ] Loading and error states display appropriately
-- [ ] Network tab shows deduplicated/cached requests on navigation
-- [ ] `npm run build` succeeds with no warnings
-- [ ] Bundle size reasonable (compare before/after)
-- [ ] Check for console errors/warnings
+- [x] All routes load correctly (`/`, `/movies`, `/tv-series`, `/movie/:id`, `/tv/:id`)
+- [x] Direct refresh/bookmark on detail pages works (id comes from `useParams()`)
+- [x] Search works with debouncing (no excessive requests)
+- [x] No setTimeouts remain in data fetching code
+- [x] Loading and error states display appropriately
+- [x] Network tab shows deduplicated/cached requests on navigation
+- [x] `npm run build` succeeds with no warnings
+- [x] Bundle size reasonable (compare before/after)
+- [x] Check for console errors/warnings
 
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| API changes in axios v1 if updated later | Medium | Stay on axios 0.27.2 for now or test carefully if upgrading |
-| FilmContext removal breaks navigation | Medium | Migrate InfoPage to use `useParams()` gradually; keep context during transition if needed |
+| FilmContext removal breaks navigation | Medium | InfoPage now reads the id from `useParams()`, so the provider was removed entirely |
 | Over-caching stale data | Low | Tune `staleTime` per resource (trending shorter, details longer) |
 | Key restriction blocks local dev | Low | Add `localhost` to TMDB referrer allowlist or use a separate dev key |
 | Bundle size increase | Low | Acceptable for the UX/caching benefits; can optimize later |
@@ -181,34 +191,34 @@ Consider using `useQueries` in Home to fetch all lists concurrently without `set
 ## Implementation Checklist
 
 ### Phase 0: Prep
-- [ ] Verify `.gitignore` includes `.env*`
-- [ ] Create `.env.example`
-- [ ] Add `.env` locally (gitignored)
+- [x] Verify `.gitignore` includes `.env*`
+- [x] Create `.env.example`
+- [x] Add `.env` locally (gitignored)
 
 ### Phase 1: Env + API Client
-- [ ] Update `src/Api/APIConfig.js` to use `process.env.REACT_APP_TMDB_API_KEY`
-- [ ] Create `src/api/client.js`
-- [ ] Create `src/api/tmdb.js`
-- [ ] Create `src/api/queryKeys.js`
-- [ ] Convert `require("axios")` → `import axios from 'axios'` across files
+- [x] Update `src/api/APIConfig.js` to use `process.env.REACT_APP_TMDB_API_KEY`
+- [x] Create `src/api/client.js`
+- [x] Create `src/api/tmdb.js`
+- [x] Create `src/api/queryKeys.js`
+- [x] Remove `axios` everywhere (native `fetch` inside the API layer)
 
 ### Phase 2: React Query Setup
-- [ ] Install `@tanstack/react-query` and devtools
-- [ ] Create `src/queryClient.js`
-- [ ] Update `src/index.js` with `QueryClientProvider`
+- [x] Install `@tanstack/react-query` and devtools
+- [x] Create `src/queryClient.js`
+- [x] Update `src/index.js` with `QueryClientProvider`
 
 ### Phase 3: Hooks & Migration
-- [ ] Create hooks in `src/hooks/` for all resources
-- [ ] Migrate `Banner.js`
-- [ ] Migrate `Home.jsx` (remove setTimeouts)
-- [ ] Migrate `Movies.jsx`
-- [ ] Migrate `Tv Series/TvSeries.jsx`
-- [ ] Migrate `InfoPage.jsx` and `TrailerSection.jsx`
-- [ ] Evaluate/remediate `FilmContext` usage
+- [x] Create hooks in `src/hooks/` for all resources
+- [x] Migrate `Banner.js`
+- [x] Migrate `Home.jsx` (remove setTimeouts)
+- [x] Migrate `Movies.jsx`
+- [x] Migrate `Tv Series/TvSeries.jsx`
+- [x] Migrate `InfoPage.jsx` and `TrailerSection.jsx`
+- [x] Evaluate/remediate `FilmContext` usage
 
 ### Phase 4: Polish
-- [ ] Add loading skeletons/error states
-- [ ] Remove console.logs
-- [ ] Test all routes and refresh cases
-- [ ] Build and verify
-- [ ] Update README with setup instructions
+- [x] Add loading skeletons/error states
+- [x] Remove console.logs
+- [x] Test all routes and refresh cases
+- [x] Build and verify
+- [x] Update README with setup instructions

@@ -1,72 +1,33 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import { useParams } from "react-router-dom";
 import "./InfoPage.css";
 import NavBar from "../../Components/Layout/NavBar/NavBar";
-import apiConfig from "../../Api/APIConfig";
+import apiConfig from "../../api/APIConfig";
 import MovieInfo from "../../Components/Layout/Main/MovieInfo";
 import TrailerSection from "./TrailerSection";
 import MoviesList from "../../Components/Layout/Main/MoviesList";
+import { useFilmDetails, useSimilarFilms } from "../../hooks/useDetails";
 
-const axios = require("axios");
-
-function InfoPage({ id, type }) {
-  let [movie, setMovie] = useState([]);
-  let [similarMovies, setSimilarMovies] = useState([]);
+function InfoPage({ type }) {
+  const { id } = useParams();
 
   useEffect(() => {
-    if (id || type !== undefined) {
-      localStorage.setItem(
-        "content-info",
-        JSON.stringify({ id: id, type: type })
-      );
-
-      getFilmInfo(id, type);
-      getSimilarMovies(id, type);
-    } else {
-      let filmInfo = JSON.parse(localStorage.getItem("content-info"));
-
-      let id = filmInfo.id;
-      let type = filmInfo.type;
-
-      getFilmInfo(id, type);
-
-      setTimeout(() => {
-        getSimilarMovies(id, type);
-      }, 2000);
-    }
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [id, type]);
 
-  async function getFilmInfo(id, type) {
-    console.log("type", type);
-    try {
-      let response;
+  const {
+    data: film,
+    isLoading: isLoadingFilm,
+    isError: isErrorFilm,
+    error: filmError,
+  } = useFilmDetails(type, id);
 
-      if (type === "movie") {
-        response = await axios.get(`${apiConfig.movieInfo(id)}`);
-      } else if (type === "tv") {
-        response = await axios.get(`${apiConfig.tvInfo(id)}`);
-      }
-
-      setMovie(response.data);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  async function getSimilarMovies(id, type) {
-    try {
-      let response;
-
-      if (type === "movie") {
-        response = await axios.get(`${apiConfig.similarMovies(id)}`);
-      } else if (type === "tv") {
-        response = await axios.get(`${apiConfig.similarTV(id)}`);
-      }
-
-      setSimilarMovies(response.data.results);
-    } catch (error) {
-      console.error(error);
-    }
-  }
+  const {
+    data: similar,
+    isLoading: isLoadingSimilar,
+    isError: isErrorSimilar,
+    error: similarError,
+  } = useSimilarFilms(type, id);
 
   return (
     <div className="info-page">
@@ -74,23 +35,37 @@ function InfoPage({ id, type }) {
 
       <div className="info-page__banner">
         <img
-          src={apiConfig.originalImage(movie.backdrop_path)}
+          src={apiConfig.originalImage(film?.backdrop_path)}
           className="info-page__img"
           alt="poster-img"
         />
         <div className="dark-shade"></div>
       </div>
 
-      <MovieInfo movie={movie} />
+      {isLoadingFilm ? (
+        <p className="info-page__status">Loading details...</p>
+      ) : isErrorFilm ? (
+        <p className="info-page__status info-page__status--error">
+          {filmError?.message || "Could not load this title."}
+        </p>
+      ) : (
+        <MovieInfo movie={film} />
+      )}
 
-      {movie.videos !== undefined ? <TrailerSection trailersArr={movie} /> : ""}
+      {film?.videos !== undefined ? (
+        <TrailerSection trailers={film.videos.results} />
+      ) : (
+        ""
+      )}
 
       <MoviesList
-        contentArr={similarMovies}
+        contentArr={similar?.results}
         title={type === "movie" ? "Similar Movies" : "Similar Tv Series"}
-        contentType={type !== undefined ? type : 'tv'}
+        contentType={type === "movie" ? "movie" : "tv"}
+        isLoading={isLoadingSimilar}
+        isError={isErrorSimilar}
+        error={similarError}
       />
-
     </div>
   );
 }

@@ -3,10 +3,8 @@ import { useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Modal from "@mui/material/Modal";
-import apiConfig from "../../../Api/APIConfig";
+import { useFilmDetails } from "../../../hooks/useDetails";
 import './ButtonModal.css'
-
-const axios = require("axios");
 
 const style = {
   position: "absolute",
@@ -31,44 +29,17 @@ const btnStyle = {
 };
 
 export default function ButtonModal({ BtnName, data_id, data_type }) {
+  const [open, setOpen] = useState(false);
 
-  let [link, setLink] = useState('')
+  const { data: film, isLoading, isError } = useFilmDetails(data_type, data_id, {
+    enabled: open,
+  });
 
+  const trailerKey = film?.videos?.results?.[0]?.key || "";
 
-  async function getInfo(id, type) {
-    try {
-      let response;
-
-      if (type === "tv") {
-        response = await axios.get(`${apiConfig.tvInfo(id)}`);
-      } else if (type === "movie") {
-        response = await axios.get(`${apiConfig.movieInfo(id)}`);
-      }
-
-      let ytKey = response.data.videos.results[0].key;
-
-      setLink(ytKey)
-
-      // console.log(resultArr)
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  const [open, setOpen] = React.useState(false);
-  const handleOpen = (e) => {
-    setOpen(true);
-    // console.log(e.nativeEvent.originalTarget.dataset.id);
-    let id = e.nativeEvent.originalTarget.dataset.id;
-    let type = e.nativeEvent.originalTarget.dataset.type;
-
-    console.log(id, type);
-
-    getInfo(id, type)
-  };
+  const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  // e.nativeEvent.originalTarget.dataset.id || type
   return (
     <div>
       <Button
@@ -89,14 +60,22 @@ export default function ButtonModal({ BtnName, data_id, data_type }) {
         aria-describedby="modal-modal-description"
       >
         <Box sx={style}>
-          <iframe
-            width="650"
-            height="350"
-            src={`https://www.youtube.com/embed/${link}`}
-            title="YouTube video player"
-            frameborder="0"
-            allowFullScreen
-          ></iframe>
+          {isLoading ? (
+            <p className="trailer-status">Loading trailer...</p>
+          ) : isError ? (
+            <p className="trailer-status">Could not load the trailer.</p>
+          ) : trailerKey ? (
+            <iframe
+              width="650"
+              height="350"
+              src={`https://www.youtube.com/embed/${trailerKey}`}
+              title="YouTube video player"
+              frameBorder="0"
+              allowFullScreen
+            ></iframe>
+          ) : (
+            <p className="trailer-status">No trailer available.</p>
+          )}
         </Box>
       </Modal>
     </div>

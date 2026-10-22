@@ -1,56 +1,52 @@
-import React, { useContext } from "react";
+import React from "react";
 import "./MoviesList.css";
-import apiConfig from "../../../Api/APIConfig";
+import apiConfig from "../../../api/APIConfig";
 import { Link } from "react-router-dom";
-import { FilmContext } from "../../../Store/FilmInfoProvider";
 
-function MoviesList({ contentArr, title, contentType }) {
-  const filmCtx = useContext(FilmContext);
-
-  function clickHandler(e) {
-
-    let id = e.target.dataset.id;
-    let type = e.target.dataset.type;
-
-    filmCtx.setID(id);
-    filmCtx.setType(type);
-  }
-
-  // content.media_type;
+function MoviesList({ contentArr, title, contentType, isLoading, isError, error }) {
+  const items = contentArr || [];
 
   return (
     <div className="content-container">
       <h1 className="category-title">{title}</h1>
-      <div className="content-slider">
-        {contentArr.map((content, i) => {
-          return (
-            <Link
-              to={`/${contentType}/${content.id}`}
-              className={"content-link"}
-              key={i}
-            >
+
+      {isLoading ? (
+        <div className="content-slider">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div className="content-link" key={index}>
               <div className="content">
-                <img
-                  src={apiConfig.originalImage(content.poster_path)}
-                  alt="poster-img"
-                  className="content-poster"
-                  data-id={content.id}
-                  data-type={contentType}
-                  onClick={(e) => clickHandler(e)}
-                />
-                <h3
-                  className="content-name"
-                  data-id={content.id}
-                  data-type={contentType}
-                  onClick={(e) => clickHandler(e)}
-                >
-                  {content.name || content.original_name || content.title}
-                </h3>
+                <div className="content-poster content-poster--skeleton" />
+                <div className="content-name content-name--skeleton" />
               </div>
-            </Link>
-          );
-        })}
-      </div>
+            </div>
+          ))}
+        </div>
+      ) : isError ? (
+        <p className="content-error">{error?.message || "Could not load this list."}</p>
+      ) : (
+        <div className="content-slider">
+          {items.map((content, i) => {
+            return (
+              <Link
+                to={`/${contentType}/${content.id}`}
+                className={"content-link"}
+                key={content.id ?? i}
+              >
+                <div className="content">
+                  <img
+                    src={apiConfig.originalImage(content.poster_path)}
+                    alt="poster-img"
+                    className="content-poster"
+                  />
+                  <h3 className="content-name">
+                    {content.name || content.original_name || content.title}
+                  </h3>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,3 +1,10 @@
 /* .trailer-btn.Mui-selected {
   background-color: red;
 } */
+
+.trailer-status {
+  color: white;
+  text-align: center;
+  font-size: 1rem;
+  padding-top: 120px;
+}

@@ -1,82 +1,66 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { useQueries } from "@tanstack/react-query";
 import "./Home.css";
-import apiConfig from "../../Api/APIConfig";
 import NavBar from "../../Components/Layout/NavBar/NavBar";
 import Banner from "../../Components/Layout/Main/Banner";
 import MoviesList from "../../Components/Layout/Main/MoviesList.jsx";
-
-const axios = require("axios");
+import { popularMoviesQuery, topRatedMoviesQuery, upcomingMoviesQuery } from "../../hooks/useMovieLists";
+import { popularTvQuery, topRatedTvQuery } from "../../hooks/useTvLists";
 
 function Home() {
-  let [trendingMovies, setTrendingMovies] = useState([]);
-  let [upComing, setUpComing] = useState([]);
-  let [topRatedMovies, setTopRatedMovies] = useState([]);
-  let [popularTv, setpopularTv] = useState([]);
-  let [topTv, setTopTv] = useState([]);
-
-  async function getMovies() {
-    try {
-      const trendingMoviesRes = await axios.get(`${apiConfig.popularMovies}`);
-      setTrendingMovies(trendingMoviesRes.data.results);
-
-      setTimeout(async () => {
-        const upComingRes = await axios.get(`${apiConfig.upComingMovies}`);
-        setUpComing(upComingRes.data.results);
-      }, 1000)
-
-      setTimeout(async() => {
-        const topRatedMoviesRes = await axios.get(apiConfig.topRatedMovies);
-        setTopRatedMovies(topRatedMoviesRes.data.results);
-      }, 2000)
-
-
-      setTimeout(async() => {
-        const popularTvRes = await axios.get(apiConfig.popularTv);
-        setpopularTv(popularTvRes.data.results);
-      }, 3000)
-
-      setTimeout(async () => {
-        const topTvRes = await axios.get(apiConfig.topRatedTv);
-        setTopTv(topTvRes.data.results);
-      }, 3500);
-
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  useEffect(() => {
-    getMovies();
-  }, []);
+  const [popularMovies, topRatedMovies, upcomingMovies, popularTv, topTv] = useQueries({
+    queries: [
+      popularMoviesQuery(),
+      topRatedMoviesQuery(),
+      upcomingMoviesQuery(),
+      popularTvQuery(),
+      topRatedTvQuery(),
+    ],
+  });
 
   return (
     <div>
       <NavBar />
       <Banner />
       <MoviesList
-        contentArr={trendingMovies}
+        contentArr={popularMovies.data?.results}
         title={"Popular Movies"}
         contentType={"movie"}
+        isLoading={popularMovies.isLoading}
+        isError={popularMovies.isError}
+        error={popularMovies.error}
       />
       <MoviesList
-        contentArr={topRatedMovies}
+        contentArr={topRatedMovies.data?.results}
         title={"Top Rated Movies"}
         contentType={"movie"}
+        isLoading={topRatedMovies.isLoading}
+        isError={topRatedMovies.isError}
+        error={topRatedMovies.error}
       />
       <MoviesList
-        contentArr={upComing}
+        contentArr={upcomingMovies.data?.results}
         title={"Upcoming Movies In Theatres"}
         contentType={"movie"}
+        isLoading={upcomingMovies.isLoading}
+        isError={upcomingMovies.isError}
+        error={upcomingMovies.error}
       />
       <MoviesList
-        contentArr={popularTv}
+        contentArr={popularTv.data?.results}
         title={"Popular TV Series"}
         contentType={"tv"}
+        isLoading={popularTv.isLoading}
+        isError={popularTv.isError}
+        error={popularTv.error}
       />
       <MoviesList
-        contentArr={topTv}
+        contentArr={topTv.data?.results}
         title={"Top TV Series"}
         contentType={"tv"}
+        isLoading={topTv.isLoading}
+        isError={topTv.isError}
+        error={topTv.error}
       />
     </div>
   );

@@ -1,70 +1,104 @@
-# Getting Started with Create React App
+# tmovies
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React app for browsing movies and TV series, powered by the [TMDB API](https://www.themoviedb.org/documentation/api) and **@tanstack/react-query**.
+
+## Features
+
+- Trending banner, popular / top rated / upcoming lists, all fetched in parallel and cached by React Query.
+- Movie and TV search with a debounced input, so typing does not spam the API.
+- Detail pages with cast, trailers and similar titles, driven by route params (`/movie/:id`, `/tv/:id`).
+- Loading skeletons and error states for every data-driven section.
+
+## Getting started
+
+```bash
+npm install
+```
+
+### 1. Add your TMDB API key
+
+Create a key at [https://www.themoviedb.org/settings/api](https://www.themoviedb.org/settings/api), then:
+
+```bash
+cp .env.example .env
+```
+
+```env
+REACT_APP_TMDB_API_KEY=YOUR_TMDB_API_KEY_HERE
+```
+
+`.env` is gitignored — never commit your key. In development the app fails fast with a clear error when the key is missing.
+
+### 2. Run the app
+
+```bash
+npm start
+```
+
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Available Scripts
 
-In the project directory, you can run:
+| Script | Description |
+|---|---|
+| `npm start` | Runs the app in development mode. |
+| `npm test` | Launches the test runner in watch mode. |
+| `npm run build` | Builds the production bundle into `build/`. |
+| `npm run deploy` | Builds and publishes `build/` to GitHub Pages (`gh-pages`). |
+| `npm run eject` | One-way operation, removes the build config. |
 
-### `npm start`
+## Deployment
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+The key is injected **at build time**, so the deployed bundle already contains it.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+| Method | How the key is injected | New key needed? |
+|---|---|---|
+| `npm run build` + `npm run deploy` (local) | Built from your local `.env` | No |
+| GitHub Actions → GitHub Pages | Repository secret `REACT_APP_TMDB_API_KEY` exposed to the build step | No |
+| Forks | Each fork can use its own secret | Only for separate quotas |
 
-### `npm test`
+Example workflow step:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```yaml
+- name: Build
+  run: npm run build
+  env:
+    REACT_APP_TMDB_API_KEY: ${{ secrets.REACT_APP_TMDB_API_KEY }}
+```
 
-### `npm run build`
+### Security notes
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- A static CRA build ships the key in the bundled JS, so it can be extracted by anyone. This is unavoidable without a backend.
+- Restrict the key in TMDB by HTTP referrer (`rahulg16.github.io/*` and `localhost:*` for development). This is the most effective mitigation.
+- If the key was ever committed to git history, regenerate it in TMDB.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Project structure
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```
+src/
+├── api/
+│   ├── APIConfig.js   # env based config (base urls, image helpers)
+│   ├── client.js      # fetch wrapper: base url, timeout, error normalisation
+│   ├── endpoints.js   # TMDB path builders
+│   ├── queryKeys.js   # centralised query key factory
+│   └── tmdb.js        # one function per endpoint, returns data
+├── hooks/
+│   ├── useDebouncedValue.js
+│   ├── useDetails.js      # useMovieDetails, useTvDetails, useSimilar*
+│   ├── useMovieLists.js   # usePopularMovies, useUpcomingMovies, useTopRatedMovies
+│   ├── useSearch.js       # useSearchMovies, useSearchTv
+│   ├── useTrending.js     # useTrendingDay
+│   └── useTvLists.js      # usePopularTv, useTopRatedTv
+├── queryClient.js   # shared QueryClient with default cache options
+├── Components/
+└── Pages/
+```
 
-### `npm run eject`
+Every hook forwards the options it receives to `useQuery`, so a consumer can override `staleTime`, `gcTime`, `enabled`, `select`, ... per call site:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```jsx
+const { data } = usePopularMovies({
+  staleTime: 60 * 1000,
+  select: (data) => data.results.slice(0, 10),
+});
+```

@@ -5,6 +5,7 @@ import Badge from "../../UI/Badge/Badge";
 import Cast from "../../UI/Cast/Cast";
 
 function MovieInfo({ movie }) {
+  if (!movie) return null;
 
   return (
     <div className="movieinfo">
