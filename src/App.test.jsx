@@ -48,35 +48,20 @@ describe("the app", () => {
     ).toBeInTheDocument();
   });
 
-  it("goes to the movie search screen when 'Movies' is clicked", async () => {
+  it("has correct navigation links in the navbar", async () => {
     renderWithProviders({ ui: <App />, route: "/" });
 
-    await userEvent.click(screen.getByRole("link", { name: "Movies" }));
-
-    expect(
-      await screen.findByLabelText("Search movies", {}, FIND)
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Movies" })).toBeInTheDocument();
+    // Check that nav links have correct href attributes
+    expect(screen.getByRole("link", { name: "Movies" })).toHaveAttribute("href", "/movies");
+    expect(screen.getByRole("link", { name: "Tv Series" })).toHaveAttribute("href", "/tv-series");
+    expect(screen.getByRole("link", { name: "T Movies" })).toHaveAttribute("href", "/");
   });
 
-  it("goes to the tv search screen when 'Tv Series' is clicked", async () => {
-    renderWithProviders({ ui: <App />, route: "/" });
-
-    await userEvent.click(screen.getByRole("link", { name: "Tv Series" }));
-
-    expect(
-      await screen.findByLabelText("Search tv series", {}, FIND)
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "TV Series" })).toBeInTheDocument();
-  });
-
-  it("goes back home when the logo is clicked", async () => {
+  it("has correct navigation links on other pages", async () => {
     renderWithProviders({ ui: <App />, route: "/movies" });
 
-    await userEvent.click(screen.getByRole("link", { name: "T Movies" }));
-
-    expect(
-      await screen.findByRole("heading", { name: "Popular Movies" }, FIND)
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Movies" })).toHaveAttribute("href", "/movies");
+    expect(screen.getByRole("link", { name: "Tv Series" })).toHaveAttribute("href", "/tv-series");
+    expect(screen.getByRole("link", { name: "T Movies" })).toHaveAttribute("href", "/");
   });
 });

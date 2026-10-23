@@ -1,10 +1,14 @@
 import React from "react";
 import Box from "@mui/material/Box";
-import { useQueries } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 import NavBar from "../../Components/Layout/NavBar/NavBar";
 import Banner from "../../Components/Layout/Main/Banner";
-import MoviesList from "../../Components/Layout/Main/MoviesList.jsx";
+import {
+  MoviesListContent,
+  MoviesListLayout,
+} from "../../Components/Layout/Main/MoviesList.jsx";
+import AsyncSection from "../../Components/UI/AsyncSection/AsyncSection";
 import {
   popularMoviesQuery,
   topRatedMoviesQuery,
@@ -12,67 +16,57 @@ import {
 } from "../../hooks/useMovieLists";
 import { popularTvQuery, topRatedTvQuery } from "../../hooks/useTvLists";
 
-function Home() {
-  const [popularMovies, topRatedMovies, upcomingMovies, popularTv, topTv] =
-    useQueries({
-      queries: [
-        popularMoviesQuery(),
-        topRatedMoviesQuery(),
-        upcomingMoviesQuery(),
-        popularTvQuery(),
-        topRatedTvQuery(),
-      ],
-    });
+function Shelf({ query, contentType }) {
+  const { data } = useSuspenseQuery(query);
 
   return (
+    <MoviesListContent contentArr={data.results} contentType={contentType} />
+  );
+}
+
+function HomeShelf({ query, title, contentType }) {
+  return (
+    <MoviesListLayout title={title}>
+      <AsyncSection
+        fallback={<MoviesListContent contentType={contentType} isLoading />}
+        errorFallback={({ error, retry }) => (
+          <MoviesListContent
+            contentType={contentType}
+            isError
+            error={error}
+            onRetry={retry}
+          />
+        )}
+      >
+        <Shelf query={query} contentType={contentType} />
+      </AsyncSection>
+    </MoviesListLayout>
+  );
+}
+
+function Home() {
+  return (
     <Box>
+      <title>T Movies</title>
       <NavBar />
       <Banner />
-      <MoviesList
-        contentArr={popularMovies.data?.results}
-        title={"Popular Movies"}
-        contentType={"movie"}
-        isLoading={popularMovies.isLoading}
-        isError={popularMovies.isError}
-        error={popularMovies.error}
-        onRetry={() => popularMovies.refetch()}
+      <HomeShelf
+        query={popularMoviesQuery()}
+        title="Popular Movies"
+        contentType="movie"
       />
-      <MoviesList
-        contentArr={topRatedMovies.data?.results}
-        title={"Top Rated Movies"}
-        contentType={"movie"}
-        isLoading={topRatedMovies.isLoading}
-        isError={topRatedMovies.isError}
-        error={topRatedMovies.error}
-        onRetry={() => topRatedMovies.refetch()}
+      <HomeShelf
+        query={topRatedMoviesQuery()}
+        title="Top Rated Movies"
+        contentType="movie"
       />
-      <MoviesList
-        contentArr={upcomingMovies.data?.results}
-        title={"Upcoming Movies In Theatres"}
-        contentType={"movie"}
-        isLoading={upcomingMovies.isLoading}
-        isError={upcomingMovies.isError}
-        error={upcomingMovies.error}
-        onRetry={() => upcomingMovies.refetch()}
+      <HomeShelf
+        query={upcomingMoviesQuery()}
+        title="Upcoming Movies In Theatres"
+        contentType="movie"
       />
-      <MoviesList
-        contentArr={popularTv.data?.results}
-        title={"Popular TV Series"}
-        contentType={"tv"}
-        isLoading={popularTv.isLoading}
-        isError={popularTv.isError}
-        error={popularTv.error}
-        onRetry={() => popularTv.refetch()}
-      />
-      <MoviesList
-        contentArr={topTv.data?.results}
-        title={"Top TV Series"}
-        contentType={"tv"}
-        isLoading={topTv.isLoading}
-        isError={topTv.isError}
-        error={topTv.error}
-        onRetry={() => topTv.refetch()}
-      />
+      <HomeShelf query={popularTvQuery()} title="Popular TV Series" contentType="tv" />
+      <HomeShelf query={topRatedTvQuery()} title="Top TV Series" contentType="tv" />
     </Box>
   );
 }

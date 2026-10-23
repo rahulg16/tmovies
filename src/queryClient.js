@@ -1,14 +1,7 @@
-import { QueryClient } from "@tanstack/react-query";
+import { createQueryClient } from "./createQueryClient";
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
-      retry: 2,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+// Backwards-compatible singleton for any code that still imports the default.
+const queryClient = createQueryClient();
 
+export { createQueryClient };
 export default queryClient;

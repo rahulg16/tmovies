@@ -179,4 +179,18 @@ describe("the movie search screen", () => {
 
     expect(screen.getByLabelText("Search movies")).toHaveValue("batman");
   });
+
+  it("shows no results when the search box is cleared", async () => {
+    const requests = collectRequests();
+
+    renderWithProviders({ ui: <Movies />, route: "/movies" });
+    await screen.findByText("batman Begins", {}, FIND);
+
+    await userEvent.clear(screen.getByLabelText("Search movies"));
+
+    expect(
+      await screen.findByText("No results found.", {}, FIND)
+    ).toBeInTheDocument();
+    expect(searchRequests(requests, "movie")).toHaveLength(1);
+  });
 });

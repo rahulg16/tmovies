@@ -11,7 +11,19 @@ export class ApiError extends Error {
 }
 
 const buildUrl = (path, params = {}) => {
-  const url = new URL(path.replace(/^\//, ""), apiConfig.baseUrl);
+  const normalizedPath = path.replace(/^\//, "");
+  const base = apiConfig.baseUrl;
+  let url;
+
+  if (base.startsWith("http")) {
+    url = new URL(normalizedPath, base);
+  } else {
+    const origin =
+      typeof window !== "undefined" && window.location
+        ? window.location.origin
+        : "http://localhost";
+    url = new URL(base.replace(/\/?$/, "/") + normalizedPath, origin);
+  }
 
   Object.entries({ api_key: apiConfig.apiKey, language: "en-US", ...params }).forEach(
     ([key, value]) => {

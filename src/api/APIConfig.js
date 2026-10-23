@@ -1,15 +1,20 @@
 import Placeholder from "../Assets/placeholder.png";
 
-const TMDB_API_KEY = process.env.REACT_APP_TMDB_API_KEY;
+const isTest = typeof process !== "undefined" && process.env && process.env.NODE_ENV === "test";
+const isServer = !isTest && typeof window === "undefined" && typeof process !== "undefined";
+
+const TMDB_API_KEY = isServer || isTest
+  ? (typeof process !== "undefined" && (process.env.TMDB_API_KEY || process.env.REACT_APP_TMDB_API_KEY))
+  : undefined;
 
 const MISSING_KEY_MESSAGE =
   "[tmovies] Missing REACT_APP_TMDB_API_KEY. Copy `.env.example` to `.env` and add your TMDB API key.";
 
-if (!TMDB_API_KEY && process.env.NODE_ENV !== "production") {
+if ((isServer || isTest) && !TMDB_API_KEY && (typeof process === "undefined" || process.env.NODE_ENV !== "production")) {
   throw new Error(MISSING_KEY_MESSAGE);
 }
 
-if (!TMDB_API_KEY) {
+if ((isServer || isTest) && !TMDB_API_KEY) {
   // eslint-disable-next-line no-console
   console.error(MISSING_KEY_MESSAGE);
 }
@@ -21,25 +26,11 @@ const buildImageUrl = (size, path) => {
 };
 
 const apiConfig = {
-  baseUrl: "https://api.themoviedb.org/3/",
+  baseUrl: isServer || isTest ? "https://api.themoviedb.org/3/" : "/api/tmdb/",
   apiKey: TMDB_API_KEY,
   originalImage: (imgPath) => buildImageUrl("original", imgPath),
   w500: (imgPath) => buildImageUrl("w500", imgPath),
-  /**
-   * A poster sized image. Posters are shown small, so the full `original`
-   * resolution is wasted bandwidth.
-   *
-   * Falls back to the bundled placeholder, so a poster is never rendered with
-   * an empty `src`.
-   */
   posterImage: (imgPath) => buildImageUrl("w500", imgPath) || Placeholder,
-  /**
-   * A full bleed backdrop. Backdrops cover the whole viewport, so they keep
-   * the `original` resolution.
-   *
-   * Returns `""` when there is no backdrop, so the caller can leave the
-   * element out instead of rendering `<img src="">`.
-   */
   backdropImage: (imgPath) => buildImageUrl("original", imgPath),
 };
 
