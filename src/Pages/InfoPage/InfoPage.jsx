@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 import NavBar from "../../Components/Layout/NavBar/NavBar";
 import apiConfig from "../../api/APIConfig";
@@ -11,9 +12,28 @@ import { selectTrailerList } from "../../api/videos";
 import ErrorState from "../../Components/UI/ErrorState/ErrorState";
 import MovieInfo from "../../Components/Layout/Main/MovieInfo";
 import TrailerSection from "./TrailerSection";
-import MoviesList from "../../Components/Layout/Main/MoviesList";
-import { useFilmDetails, useSimilarFilms } from "../../hooks/useDetails";
+import {
+  MoviesListContent,
+  MoviesListLayout,
+} from "../../Components/Layout/Main/MoviesList";
+import AsyncSection from "../../Components/UI/AsyncSection/AsyncSection";
+import {
+  movieDetailsQuery,
+  similarMoviesQuery,
+  similarTvQuery,
+  tvDetailsQuery,
+} from "../../hooks/useDetails";
 import { FONT_STACK_ALT, visuallyHiddenSx } from "../../theme";
+
+const heroSx = {
+  position: "relative",
+  minHeight: { xs: "80vh", md: "90vh" },
+  display: "flex",
+  alignItems: "center",
+  overflow: "hidden",
+  pt: { xs: 8, md: 10 },
+  pb: 6,
+};
 
 function DetailsSkeleton() {
   return (
@@ -95,55 +115,34 @@ function DetailsSkeleton() {
   );
 }
 
-function InfoPage({ type }) {
-  const { id } = useParams();
+function DetailsFallback() {
+  return (
+    <Box sx={heroSx}>
+      <Box sx={{ position: "relative", zIndex: 2, width: "100%", px: { xs: 2, md: 5 } }}>
+        <Typography
+          component="span"
+          role="status"
+          aria-live="polite"
+          sx={visuallyHiddenSx}
+        >
+          Loading details...
+        </Typography>
+        <DetailsSkeleton />
+      </Box>
+    </Box>
+  );
+}
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [id, type]);
-
-  const {
-    data: film,
-    isLoading: isLoadingFilm,
-    isFetching: isFetchingFilm,
-    isError: isErrorFilm,
-    error: filmError,
-    refetch: refetchFilm,
-  } = useFilmDetails(type, id);
-
-  const {
-    data: similar,
-    isLoading: isLoadingSimilar,
-    isError: isErrorSimilar,
-    error: similarError,
-    refetch: refetchSimilar,
-  } = useSimilarFilms(type, id);
-
-  // A trailer from another site cannot be played here, and a film without a
-  // `videos` object must not break the page.
-  const trailerList = selectTrailerList(film?.videos?.results);
-
-  // The details of the film that was asked for, not the ones that were
-  // loaded before the page moved on to another film.
-  const filmMatchesRoute = film != null && Number(film.id) === Number(id);
-  const isShowingSkeleton = !isErrorFilm && (isLoadingFilm || !filmMatchesRoute);
+function FilmDetails({ type, id }) {
+  const query = type === "movie" ? movieDetailsQuery(id) : tvDetailsQuery(id);
+  const { data: film } = useSuspenseQuery(query);
+  const trailers = selectTrailerList(film?.videos?.results);
 
   return (
-    <Box sx={{ minHeight: "100vh", color: "white" }}>
+    <>
       <title>{film?.title || film?.name || "Details"}</title>
-      <NavBar />
 
-      <Box
-        sx={{
-          position: "relative",
-          minHeight: { xs: "80vh", md: "90vh" },
-          display: "flex",
-          alignItems: "center",
-          overflow: "hidden",
-          pt: { xs: 8, md: 10 },
-          pb: 6,
-        }}
-      >
+      <Box sx={heroSx}>
         {film?.backdrop_path ? (
           <Box
             component="img"
@@ -163,6 +162,7 @@ function InfoPage({ type }) {
             }}
           />
         ) : null}
+
         <Box
           sx={{
             position: "absolute",
@@ -174,53 +174,78 @@ function InfoPage({ type }) {
         />
 
         <Box sx={{ position: "relative", zIndex: 2, width: "100%", px: { xs: 2, md: 5 } }}>
-          {isShowingSkeleton ? (
-            <>
-              <Typography
-                component="span"
-                role="status"
-                aria-live="polite"
-                sx={visuallyHiddenSx}
-              >
-                Loading details...
-              </Typography>
-              <DetailsSkeleton />
-            </>
-          ) : isErrorFilm ? (
-            <ErrorState
-              message={filmError?.message || "Could not load this title."}
-              onRetry={() => refetchFilm()}
-              sx={{ fontFamily: FONT_STACK_ALT, py: 6 }}
-            />
-          ) : (
-            <>
-              {isFetchingFilm ? (
-                <Typography
-                  component="span"
-                  role="status"
-                  aria-live="polite"
-                  sx={visuallyHiddenSx}
-                >
-                  Updating details...
-                </Typography>
-              ) : null}
-              <MovieInfo movie={film} />
-            </>
-          )}
+          <MovieInfo movie={film} />
         </Box>
       </Box>
 
-      {trailerList.length > 0 ? <TrailerSection trailers={trailerList} /> : null}
+      {trailers.length > 0 ? <TrailerSection trailers={trailers} /> : null}
+    </>
+  );
+}
 
-      <MoviesList
-        contentArr={similar?.results}
-        title={type === "movie" ? "Similar Movies" : "Similar Tv Series"}
-        contentType={type === "movie" ? "movie" : "tv"}
-        isLoading={isLoadingSimilar}
-        isError={isErrorSimilar}
-        error={similarError}
-        onRetry={() => refetchSimilar()}
-      />
+function SimilarFilms({ type, id }) {
+  const query = type === "movie" ? similarMoviesQuery(id) : similarTvQuery(id);
+  const { data } = useSuspenseQuery(query);
+
+  return (
+    <MoviesListContent
+      contentArr={data.results}
+      contentType={type === "movie" ? "movie" : "tv"}
+    />
+  );
+}
+
+function InfoPage({ type }) {
+  const { id } = useParams();
+  const similarTitle = type === "movie" ? "Similar Movies" : "Similar Tv Series";
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [id, type]);
+
+  return (
+    <Box sx={{ minHeight: "100vh", color: "white" }}>
+      <NavBar />
+
+      <AsyncSection
+        resetKeys={[id, type]}
+        fallback={<DetailsFallback />}
+        errorFallback={({ error, retry }) => (
+          <Box sx={heroSx}>
+            <Box sx={{ width: "100%", px: { xs: 2, md: 5 } }}>
+              <ErrorState
+                message={error?.message || "Could not load this title."}
+                onRetry={retry}
+                sx={{ fontFamily: FONT_STACK_ALT, py: 6 }}
+              />
+            </Box>
+          </Box>
+        )}
+      >
+        <FilmDetails type={type} id={id} />
+      </AsyncSection>
+
+      <MoviesListLayout title={similarTitle}>
+        <AsyncSection
+          resetKeys={[id, type]}
+          fallback={
+            <MoviesListContent
+              contentType={type === "movie" ? "movie" : "tv"}
+              isLoading
+            />
+          }
+          errorFallback={({ error, retry }) => (
+            <MoviesListContent
+              contentType={type === "movie" ? "movie" : "tv"}
+              isError
+              error={error}
+              onRetry={retry}
+            />
+          )}
+        >
+          <SimilarFilms type={type} id={id} />
+        </AsyncSection>
+      </MoviesListLayout>
     </Box>
   );
 }

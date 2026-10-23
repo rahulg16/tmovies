@@ -6,14 +6,16 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
 import SimpleCard from "../../UI/Card/SimpleCard";
 import ButtonModal from "../../UI/ButtonModal/ButtonModal";
 import Button from "../../UI/SimpleButton/Button";
 import ErrorState from "../../UI/ErrorState/ErrorState";
+import AsyncSection from "../../UI/AsyncSection/AsyncSection";
 import apiConfig from "../../../api/APIConfig";
 import { hideScrollbarSx } from "../../../theme/hideScrollbar";
-import { useTrendingDay } from "../../../hooks/useTrending";
+import { trendingDayQuery } from "../../../hooks/useTrending";
 
 const selectTrending = (data) => (data?.results ?? []).slice(0, 8);
 
@@ -22,40 +24,17 @@ const AUTOPLAY_INTERVAL = 6000;
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
-/**
- * `window.matchMedia` is not implemented everywhere (jsdom does not have it),
- * so every use of it is guarded.
- */
-const readReducedMotion = () => {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return false;
-  }
-
-  try {
-    return window.matchMedia(REDUCED_MOTION_QUERY).matches === true;
-  } catch (error) {
-    return false;
-  }
-};
-
-function Banner() {
-  const {
-    data: trendingMovies,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useTrendingDay({ select: selectTrending });
-
+function BannerCarousel({ slides = [] }) {
   const scrollerRef = useRef(null);
   const slideIndexRef = useRef(0);
 
-  const [isPaused, setIsPaused] = useState(readReducedMotion);
+  // Start unpaused so the first client render matches the server. The media
+  // query is applied after mount.
+  const [isPaused, setIsPaused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [hasFocusWithin, setHasFocusWithin] = useState(false);
   const [isDocumentHidden, setIsDocumentHidden] = useState(false);
 
-  const slides = trendingMovies || [];
   const slideCount = slides.length;
   const canAutoplay = slideCount >= 2;
 
@@ -73,6 +52,8 @@ function Banner() {
     } catch (error) {
       return undefined;
     }
+
+    if (query.matches) setIsPaused(true);
 
     const handleChange = (event) => {
       if (event.matches) setIsPaused(true);
@@ -149,41 +130,6 @@ function Banner() {
 
     setHasFocusWithin(false);
   };
-
-  if (isLoading) {
-    return (
-      <Box
-        sx={{
-          position: "relative",
-          minHeight: { xs: "60vh", md: "80vh" },
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-        }}
-      >
-        <Skeleton
-          variant="rectangular"
-          sx={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-        />
-        <Box sx={{ position: "relative", width: "85%" }}>
-          <Skeleton variant="text" width="60%" height={48} />
-          <Skeleton variant="text" width="85%" />
-          <Skeleton variant="text" width="75%" />
-        </Box>
-      </Box>
-    );
-  }
-
-  if (isError) {
-    return (
-      <ErrorState
-        message={error?.message || "Could not load trending titles."}
-        onRetry={() => refetch()}
-        sx={{ minHeight: "60vh" }}
-      />
-    );
-  }
 
   return (
     <Box
@@ -344,6 +290,56 @@ function Banner() {
         </IconButton>
       ) : null}
     </Box>
+  );
+}
+
+function BannerSkeleton() {
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        minHeight: { xs: "60vh", md: "80vh" },
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+      }}
+    >
+      <Skeleton
+        variant="rectangular"
+        sx={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      />
+      <Box sx={{ position: "relative", width: "85%" }}>
+        <Skeleton variant="text" width="60%" height={48} />
+        <Skeleton variant="text" width="85%" />
+        <Skeleton variant="text" width="75%" />
+      </Box>
+    </Box>
+  );
+}
+
+function BannerData() {
+  const { data } = useSuspenseQuery(
+    trendingDayQuery({ select: selectTrending })
+  );
+
+  return <BannerCarousel slides={data} />;
+}
+
+function Banner() {
+  return (
+    <AsyncSection
+      fallback={<BannerSkeleton />}
+      errorFallback={({ error, retry }) => (
+        <ErrorState
+          message={error?.message || "Could not load trending titles."}
+          onRetry={retry}
+          sx={{ minHeight: "60vh" }}
+        />
+      )}
+    >
+      <BannerData />
+    </AsyncSection>
   );
 }
 

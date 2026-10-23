@@ -130,6 +130,29 @@ describe("the details of a film", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("falls back to a plain title and no backdrop when the film has neither", async () => {
+    server.use(
+      http.get(`${TMDB_BASE_URL}/movie/550`, () =>
+        HttpResponse.json(
+          movieFixture({
+            id: 550,
+            title: "",
+            original_title: "",
+            backdrop_path: null,
+          })
+        )
+      )
+    );
+
+    renderWithProviders({ ui: <MovieRoutes />, route: "/movie/550" });
+
+    expect(
+      await screen.findByText("A movie overview.", {}, FIND)
+    ).toBeInTheDocument();
+    expect(document.querySelector("title")).toHaveTextContent("Details");
+    expect(document.querySelector('img[width="1920"]')).not.toBeInTheDocument();
+  });
+
   it("shows no trailer section for a film without videos", async () => {
     server.use(
       http.get(`${TMDB_BASE_URL}/movie/550`, () =>
