@@ -22,10 +22,10 @@
     "react-is": "^18.3.1"
   },
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "node server/index.js",
+    "start": "node server.js",
+    "dev": "node server.js",
     "build": "vite build && vite build --ssr server/entry-server.jsx --outDir dist/server",
-    "preview": "NODE_ENV=production node server/index.js",
+    "preview": "NODE_ENV=production node server.js",
     "test": "jest --env=./src/test-utils/jestEnv.cjs",
     "test:ci": "CI=true jest --env=./src/test-utils/jestEnv.cjs --watchAll=false",
     "test:coverage": "CI=true jest --env=./src/test-utils/jestEnv.cjs --watchAll=false --coverage"
