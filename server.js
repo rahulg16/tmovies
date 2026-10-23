@@ -1,2 +1,2 @@
 // Entry point for Elastic Beanstalk
-require('./server/index.js');
+import './server/index.js';
