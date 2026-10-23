@@ -2,6 +2,8 @@
 
 A React app for browsing movies and TV series, powered by the [TMDB API](https://www.themoviedb.org/documentation/api) and **@tanstack/react-query**.
 
+APP in SSR: https://tmovies-bfdt.onrender.com/
+
 ## Features
 
 - Trending banner, popular / top rated / upcoming lists, all fetched in parallel and cached by React Query.
