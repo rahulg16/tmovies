@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
@@ -63,8 +62,8 @@ function MoviesList({
 
             return (
               <Box
-                component={Link}
-                to={`/${contentType}/${content.id}`}
+                component="a"
+                href={`/${contentType}/${content.id}`}
                 key={content.id ?? i}
                 sx={{
                   mr: "4%",

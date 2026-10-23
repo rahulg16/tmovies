@@ -286,7 +286,18 @@ describe("the details of a film", () => {
     ).toBeInTheDocument();
   });
 
-  it("scrolls back to the top when another film is opened", async () => {
+  it("has correct similar movie links with correct href", async () => {
+    server.use(
+      http.get(`${TMDB_BASE_URL}/movie/550/similar`, () =>
+        HttpResponse.json({
+          results: [
+            movieFixture({ id: 31, title: "Similar Movie Title" }),
+            movieFixture({ id: 32, title: "Another Similar Movie" }),
+          ],
+        })
+      )
+    );
+
     renderWithProviders({ ui: <MovieRoutes />, route: "/movie/550" });
 
     expect(
@@ -294,21 +305,12 @@ describe("the details of a film", () => {
     ).toBeInTheDocument();
     expect(window.scrollTo).toHaveBeenCalledTimes(1);
 
-    await userEvent.click(
-      await shelfOf("Similar Movies").findByRole("link", {
-        name: /Similar Movie Title/,
-      })
-    );
-
-    expect(
-      await screen.findByRole("heading", { name: "Movie 31" }, FIND)
-    ).toBeInTheDocument();
-    expect(window.scrollTo).toHaveBeenCalledTimes(2);
-    expect(window.scrollTo).toHaveBeenLastCalledWith({
-      top: 0,
-      left: 0,
-      behavior: "auto",
-    });
+    const links = await shelfOf("Similar Movies").findAllByRole("link");
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute("href", "/movie/31");
+    expect(links[1]).toHaveAttribute("href", "/movie/32");
+    expect(links[0]).toHaveTextContent("Similar Movie Title");
+    expect(links[1]).toHaveTextContent("Another Similar Movie");
   });
 
   it("shows the film straight away when it is opened again", async () => {

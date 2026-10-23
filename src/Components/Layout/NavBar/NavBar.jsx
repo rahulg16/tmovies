@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
@@ -14,9 +13,9 @@ import LocalMoviesIcon from "@mui/icons-material/LocalMovies";
 import MovieIcon from "@mui/icons-material/Movie";
 
 const sections = [
-  { label: "Home", to: "/", icon: HomeIcon },
-  { label: "Movies", to: "/movies", icon: MovieIcon },
-  { label: "Tv Series", to: "/tv-series", icon: LiveTvIcon },
+  { label: "Home", href: "/", icon: HomeIcon },
+  { label: "Movies", href: "/movies", icon: MovieIcon },
+  { label: "Tv Series", href: "/tv-series", icon: LiveTvIcon },
 ];
 
 const linkSx = {
@@ -41,8 +40,8 @@ function NavBar() {
           sx={{ display: "flex", justifyContent: "space-between", minWidth: 0 }}
         >
           <Box
-            component={Link}
-            to="/"
+            component="a"
+            href="/"
             aria-label="T Movies"
             sx={{
               display: "flex",
@@ -80,11 +79,11 @@ function NavBar() {
               flexShrink: 0,
             }}
           >
-            {sections.map(({ label, to, icon: Icon }) => (
+            {sections.map(({ label, href, icon: Icon }) => (
               <ListItemButton
                 key={label}
-                component={Link}
-                to={to}
+                component="a"
+                href={href}
                 aria-label={label}
                 sx={linkSx}
               >

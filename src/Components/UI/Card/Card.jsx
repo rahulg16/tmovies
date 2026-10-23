@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import MuiCard from "@mui/material/Card";
 import CardActionArea from "@mui/material/CardActionArea";
 import Box from "@mui/material/Box";
@@ -23,8 +22,8 @@ function Card({ movieInfo, type }) {
       }}
     >
       <CardActionArea
-        component={Link}
-        to={`/${type}/${movieInfo.id}`}
+        component="a"
+        href={`/${type}/${movieInfo.id}`}
         sx={{
           display: "flex",
           flexDirection: "column",

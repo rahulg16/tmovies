@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Skeleton from "@mui/material/Skeleton";
@@ -284,28 +283,28 @@ function Banner() {
                     {movie.overview}
                   </Typography>
 
-                  <Stack
-                    direction="row"
-                    flexWrap="wrap"
-                    sx={{
-                      width: { xs: "100%", sm: "80%" },
-                      gap: 2,
-                      mt: 2.75,
-                      justifyContent: { xs: "flex-start", sm: "space-around" },
-                      alignItems: "center",
-                    }}
-                  >
-                    <Button
-                      BtnName="Watch Now"
-                      component={Link}
-                      to={`/${movie.media_type}/${movie.id}`}
-                    />
-                    <ButtonModal
-                      BtnName="Watch Trailer"
-                      data_id={movie.id}
-                      data_type={movie.media_type}
-                    />
-                  </Stack>
+<Stack
+                      direction="row"
+                      flexWrap="wrap"
+                      sx={{
+                        width: { xs: "100%", sm: "80%" },
+                        gap: 2,
+                        mt: 2.75,
+                        justifyContent: { xs: "flex-start", sm: "space-around" },
+                        alignItems: "center",
+                      }}
+                    >
+                      <Button
+                        BtnName="Watch Now"
+                        component="a"
+                        href={`/${movie.media_type}/${movie.id}`}
+                      />
+                      <ButtonModal
+                        BtnName="Watch Trailer"
+                        data_id={movie.id}
+                        data_type={movie.media_type}
+                      />
+                    </Stack>
                 </Box>
 
                 <Box sx={{ display: { xs: "none", sm: "block" } }}>
